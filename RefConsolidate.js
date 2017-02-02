@@ -141,11 +141,11 @@ var refcon = {
 				}
 			}
 			
-			// Go through refTemplates array and create an array of TextPart objects
+			// Go through refTemplates array (refTemplates determine the boundaries) and create an array of TextPart objects
 			// These are text parts of an article that are located between reference templates
 
 			refcon.storeTextParts();
-			
+						
 			// Process references in reference templates, remove duplicate keys and values
 
 			for ( i = 0; i < refcon.refTemplates.length; i++ ) {
@@ -651,12 +651,12 @@ var refcon = {
 			// Look for all references
 
 			var references = [],
-				referencesRegExp = /<ref(\s+[^\/]+)?>([\s\S]*?)<\/ref>/ig,
+				referencesRegExp = /<ref(\s+[^\/]+?)?>([\s\S]*?)<\/ref>/ig,
 				match,
 				reference;
 
 			while ( ( match = referencesRegExp.exec( textPart.string ) ) ) {
-				
+								
 				// Avoid further processing of citations like <ref name="pm"></ref>
 				if ( match[2] === '' ) {
 					continue;
