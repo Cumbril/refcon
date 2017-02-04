@@ -310,10 +310,11 @@ var refcon = {
 			// If we're inside a link or subtemplate, don't disturb it
 			if ( linkLevel || subtemplateLevel ) {
 				paramPairs[ paramName ] += '|' + paramString;
+				//@todo: There is a potential problem with this code (and the one below).
 				if ( paramString.indexOf( ']]' ) > -1 && paramString.indexOf( '[[' ) === -1 ) {
 					linkLevel--;
 				}
-				if ( paramString.indexOf( '}}' ) > -1 && paramString.indexOf( '}}' ) === -1 ) {
+				if ( paramString.indexOf( '}}' ) > -1 && paramString.indexOf( '{{' ) === -1 ) {
 					subtemplateLevel--;
 				}
 				continue;
@@ -347,8 +348,6 @@ var refcon = {
 		var refGroupNames = refcon.getOption( 'reftemplategroupnames' );
 		
 		if ( Array.isArray( refGroupNames ) ) {
-
-			//refGroupName = refGroupNames[0];
 
 			if ( typeof paramPairs === 'object' ) {
 				for ( i = 0; i < refGroupNames.length; i++ ) {
