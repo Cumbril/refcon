@@ -311,6 +311,7 @@ var refcon = {
 			if ( linkLevel || subtemplateLevel ) {
 				paramPairs[ paramName ] += '|' + paramString;
 				//@todo: There is a potential problem with this code (and the one below).
+				//If one of the split parts has uneven number of brace pairs (e.g. one closed template and one unclosed), it fails
 				if ( paramString.indexOf( ']]' ) > -1 && paramString.indexOf( '[[' ) === -1 ) {
 					linkLevel--;
 				}
@@ -969,7 +970,6 @@ var refcon = {
 		return ( templateRef );
 	},
 	
-	
 	/**
 	 * Add the RefCon edit summary
 	 *
@@ -978,13 +978,15 @@ var refcon = {
 	addSummary: function () {
 		var currentSummary = $( '#wpSummary' ).val();
 		var	refconSummary = refcon.getOption( 'summary' );
+		var summarySeparator = refcon.getOption( 'summaryseparator' );
+
 		if ( !refconSummary ) {
 			return; // No summary defined
 		}
 		if ( currentSummary.indexOf( refconSummary ) > -1 ) {
 			return; // Don't add it twice
 		}
-		$( '#wpSummary' ).val( currentSummary ? currentSummary + refconSummary : refconSummary );
+		$( '#wpSummary' ).val( currentSummary ? currentSummary + summarySeparator + refconSummary : refconSummary );
 	},	
 	
 	/**
