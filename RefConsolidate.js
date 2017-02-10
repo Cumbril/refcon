@@ -875,8 +875,40 @@ var refcon = {
 	 */	
 	
 	buildRefTemplates: function ( refTemplate ) {
-		var i, reference, referencesString = '', refsAdded = false;
-		
+		var i, reference, referencesString = '', refsAdded = false, sortRefs;
+
+		// sort references depending on config and user config settings
+		var sortRefsOption = refcon.getOption( 'sortrefs' );
+
+		switch ( sortRefsOption ) {
+		  case 'yes':
+			sortRefs = true;
+			break;
+		  case 'no':
+			sortRefs = false;
+			break;
+		  case 'user':
+			if ( typeof refConsolidateConfig === 'object' && typeof refConsolidateConfig.sort !== 'undefined' ) {
+				if ( refConsolidateConfig.sort === true )
+					sortRefs = true;
+				else if ( refConsolidateConfig.sort === false )
+					sortRefs = false;
+			} else {
+				sortRefs = false;
+			}
+			break;
+		  default:
+			sortRefs = false;
+		}
+
+		if ( sortRefs ===  true ) {
+			var contentLanguage = mw.config.get( 'wgContentLanguage' );
+
+			refTemplate.references.sort( function( a,b ) {
+				return a.name.localeCompare( b.name, contentLanguage);
+			});
+		}
+
 		for ( i = 0; i < refTemplate.references.length; i++ ) {
 			reference = refTemplate.references[ i ];
 			if ( reference ) {

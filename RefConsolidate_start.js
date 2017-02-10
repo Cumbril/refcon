@@ -26,7 +26,9 @@ $.when (
 					'refcon-reftemplaterefsnames': [ //List template {{reflist}} 'refs' parameter aliases that are used in wiki. Put main first
 						'allikad',
 						'refs'
-					]					
+					],
+					'refcon-sortrefs': 'user'	// If references will be sorted alphabetically in reference template.
+												// Value can be 'yes', 'no', 'user'
 				});
 				mw.loader.load('https://localhost/RefConsolidate.js', 'text/javascript');
 			}
