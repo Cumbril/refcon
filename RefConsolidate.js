@@ -875,7 +875,7 @@ var refcon = {
 	 */	
 	
 	buildRefTemplates: function ( refTemplate ) {
-		var i, reference, referencesString = '', refsAdded = false, sortRefs;
+		var i, reference, referencesString = '', refsAdded = false, sortRefs = false;
 
 		// sort references depending on config and user config settings
 		var sortRefsOption = refcon.getOption( 'sortrefs' );
@@ -888,13 +888,8 @@ var refcon = {
 			sortRefs = false;
 			break;
 		  case 'user':
-			if ( typeof refConsolidateConfig === 'object' && typeof refConsolidateConfig.sort !== 'undefined' ) {
-				if ( refConsolidateConfig.sort === true )
-					sortRefs = true;
-				else if ( refConsolidateConfig.sort === false )
-					sortRefs = false;
-			} else {
-				sortRefs = false;
+			if ( typeof refConsolidateConfig === 'object' && typeof refConsolidateConfig.sort !== 'undefined' && refConsolidateConfig.sort === true ) {
+				sortRefs = true;
 			}
 			break;
 		  default:
