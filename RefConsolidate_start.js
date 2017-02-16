@@ -1,14 +1,14 @@
 ﻿// Make sure the document is ready and dependencies are loaded
 $.when (
 	$.ready,
-	mw.loader.using(['mediawiki.util'])
+	mw.loader.using(['mediawiki.util', 'ext.gadget.xmlToJSON'])
 	).done(function () {
 		// Only load on appropriate namespaces
 		var namespace = mw.config.get( 'wgNamespaceNumber' );
 		if ( namespace === 0 || namespace === 2 ) {
 			// Only load when editing wikitext (and not in common.js or common.css, for example)
 			var contentModel = mw.config.get( 'wgPageContentModel' );
-			if ( contentModel === 'wikitext' ) {
+			if ( contentModel === 'wikitext' ) {				
 				// Configure the gadget for this particular wiki
 				mw.config.set({
 					'refcon-summary': 'Koondasin skripti abil viited', // Edit summary automatically added by ProveIt
@@ -27,9 +27,12 @@ $.when (
 						'allikad',
 						'refs'
 					],
-					'refcon-sortrefs': 'user'	// If references will be sorted alphabetically in reference template.
+					'refcon-sortrefs': 'user'	// Whether references will be sorted alphabetically in reference template.
 												// Value can be 'yes', 'no', 'user'
 				});
+				// load xmlToJSON
+				mw.loader.load('https://localhost/xmlToJSON.min.js', 'text/javascript');
+				// load the main script
 				mw.loader.load('https://localhost/RefConsolidate.js', 'text/javascript');
 			}
 		}

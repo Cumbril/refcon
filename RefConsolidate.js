@@ -124,6 +124,8 @@ var refcon = {
 		var indexes = refcon.parseIndexes(), i;
 		
 		if ( indexes.length > 0 ) {
+			
+			var templateDataList = [], templatesString = '';
 
 			// Go through indexes array
 			for ( i = 0; i < indexes.length; i++ ) {
@@ -134,18 +136,25 @@ var refcon = {
 
 				// don't do anything with the reference template if it is not closed
 				if ( templateData['refEndIndex'] !== null ) {
-
-					var refTemplate = refcon.getTemplateObject ( templateData );
-
-					refcon.parseTemplateRefs( refTemplate );
+					templatesString += templateData['templateContent'];
+					templateDataList.push( templateData );
 				}
 			}
-			
+
+			// Use mw.API to get reflist templates parameter pairs
+			var paramPairsList = refcon.getTemplateParams( templatesString );
+
+			for ( i = 0; i < templateDataList.length; i++ ) {
+				var paramsPair = typeof paramPairsList[ i ] !== 'undefined' ? paramPairsList[ i ] : {};				
+				var refTemplate = refcon.getTemplateObject( templateDataList[ i ], paramsPair );
+				refcon.parseTemplateRefs( refTemplate );
+			}
+
 			// Go through refTemplates array (refTemplates determine the boundaries) and create an array of TextPart objects
 			// These are text parts of an article that are located between reference templates
 
 			refcon.storeTextParts();
-						
+
 			// Process references in reference templates, remove duplicate keys and values
 
 			for ( i = 0; i < refcon.refTemplates.length; i++ ) {
@@ -283,73 +292,95 @@ var refcon = {
 	},
 	
 	/**
-	 * Get reference template's name and value pairs
+	 * Get all reference templates' name and value pairs using a single mw.Api call
+	 *
+	 * @param {string} String that contains all article's reflist templates
+	 *
+	 * @return {array} List of reference template objects with parameter names and values
+	 */
+
+	 getTemplateParams: function ( templatesString ) {
+
+		var paramPairsList = [];
+		var refTemplateNames = refcon.getOption( 'reftemplatenames' );
+
+		if ( Array.isArray( refTemplateNames ) ) {
+			var mainRefTemplateName = refTemplateNames[0];
+		} else {
+			// call some error handling function and halt			
+		}
+
+		// We will do a single API call to get all reflist templates parameter pairs
+		new mw.Api().post({
+			'action': 'expandtemplates',
+			'text': templatesString,
+			'prop': 'parsetree'
+		}, { async: false }).done( function ( data ) {
+			var parsetree = data.expandtemplates.parsetree;
+			var result = xmlToJSON.parseString( parsetree );
+			var i, templateRoot = result.root[0].template;
+
+			for ( i = 0; i < templateRoot.length; i++ ) {
+				if ( templateRoot[ i ].title[0]['_text'] === mainRefTemplateName ) {
+					var paramPairs = {};
+					var part = templateRoot[ i ].part;
+					if ( typeof part !== 'undefined' ) {
+						var j, name, value, ext;
+						for ( j = 0; j < part.length; j++ ) {
+							if ( typeof part[ j ].equals !== 'undefined' ) {
+								name = part[ j ].name[0]['_text'];
+							} else {
+								name = part[ j ].name[0]['_attr']['index']['_value'];
+							}
+							name = typeof name === 'string' ? name.trim() : name;
+
+							if ( typeof part[ j ].value[0]['_text'] !== 'undefined' ) {
+								value = part[ j ].value[0]['_text'];
+							} else if ( typeof part[ j ].value[0]['ext'] !== 'undefined' ) {
+								ext = part[ j ].value[0]['ext'];
+								if ( Array.isArray( ext ) ) {
+									var k, attr, inner;
+									value = [];
+									for ( k = 0; k < ext.length; k++ ) {
+										if ( typeof ext[ k ]['name'][0]['_text'] !== 'undefined' && ext[ k ]['name'][0]['_text'].toLowerCase() === 'ref'
+											&& typeof ext[ k ]['close'][0]['_text'] !== 'undefined' && ext[ k ]['close'][0]['_text'].toLowerCase() === '</ref>' ) {
+											if ( typeof ext[ k ]['attr'][0]['_text'] !== 'undefined' && typeof ext[ k ]['inner'][0]['_text'] !== 'undefined' ) {
+												value.push({
+													'attr': ext[ k ]['attr'][0]['_text'],
+													'inner': ext[ k ]['inner'][0]['_text']
+												});
+											}
+										}
+									}
+								}
+							}
+							value = typeof value === 'string' ? value.trim() : value;
+							paramPairs[ name ] = value;
+						}
+						paramPairsList.push( paramPairs );
+					}
+				}
+			}
+		});
+		return ( paramPairsList );
+	 },
+
+	/**
+	 * Get reference template object from paramPairs and templateData objects
 	 *
 	 * @param {object} reference template data object with indexes and template content
+	 * @param {object} reference template parameter pairs object with param names and values
 	 *
-	 * @return {object} reference template object with template names and values
+	 * @return {object} reference template object
 	 */	
 
-	 getTemplateObject: function ( templateData ) {
-		 
-		var templateContent = templateData[ 'templateContent' ], 
-			startIndex = templateData[ 'refStartIndex' ],
-			endIndex = templateData[ 'refEndIndex' ];
-			
-		// Remove the outer braces and split by pipe, knowing that we may match pipes inside links and subtemplates
-		var paramArray = templateContent.substring( 2, templateContent.length - 2 ).split( '|' );
-				
-		paramArray.shift(); // Get rid of the template name
-				
-		var i, paramString, linkLevel = 0, subtemplateLevel = 0, indexOfEqual, paramNumber = 0, paramName, paramValue, paramPairs = {};
-		
-		for ( i = 0; i < paramArray.length; i++ ) {
-			
-			paramString = paramArray[ i ].trim();
+	 getTemplateObject: function ( templateData, paramPairs ) {
 
-			// If we're inside a link or subtemplate, don't disturb it
-			if ( linkLevel || subtemplateLevel ) {
-				paramPairs[ paramName ] += '|' + paramString;
-				//@todo: There is a potential problem with this code (and the one below).
-				//If one of the split parts has uneven number of brace pairs (e.g. one closed template and one unclosed), it fails
-				if ( paramString.indexOf( ']]' ) > -1 && paramString.indexOf( '[[' ) === -1 ) {
-					linkLevel--;
-				}
-				if ( paramString.indexOf( '}}' ) > -1 && paramString.indexOf( '{{' ) === -1 ) {
-					subtemplateLevel--;
-				}
-				continue;
-			}
-
-			// If we reach this point and there's no equal sign, it's an anonymous parameter
-			indexOfEqual = paramString.indexOf( '=' );
-			if ( indexOfEqual === -1 ) {
-				paramNumber++;
-				paramName = paramNumber;
-				paramValue = paramString;
-				paramPairs[ paramName ] = paramValue;
-				continue;
-			}
-
-			paramName = paramString.substring( 0, indexOfEqual ).trim();
-			paramValue = paramString.substring( indexOfEqual + 1 ).trim();
-
-			// Check if there's an unclosed link or subtemplate
-			if ( paramValue.indexOf( '[[' ) > -1 && paramValue.indexOf( ']]' ) === -1 ) {
-				linkLevel++;
-			}
-			if ( paramValue.indexOf( '{{' ) > -1 && paramValue.indexOf( '}}' ) === -1 ) {
-				subtemplateLevel++;
-			}
-
-			paramPairs[ paramName ] = paramValue;
-		}
-		
-		var name, i, refGroupName, groupName;
+		var name, i, groupName;
 		var refGroupNames = refcon.getOption( 'reftemplategroupnames' );
-		
-		if ( Array.isArray( refGroupNames ) ) {
 
+		// Go through paramPairs and see if there is a configuration defined group name in parameter names. Get it's value
+		if ( Array.isArray( refGroupNames ) ) {
 			if ( typeof paramPairs === 'object' ) {
 				for ( i = 0; i < refGroupNames.length; i++ ) {
 					var name = refGroupNames[ i ];
@@ -362,29 +393,29 @@ var refcon = {
 		} else {
 			// call some error handling function and halt
 		}
-		
+
 		if ( typeof groupName === 'undefined' ) {
 			groupName = '';
 		}
-		
+
 		refcon.templateGroups.push( groupName );
-					
-		// Build the basic reference template
+
+		// Build basic reference template
 		var refTemplate = new refcon.RefTemplate({
 			'group': groupName,
-			'string': templateContent,
-			'start': startIndex,
-			'end': endIndex,
+			'string': templateData[ 'templateContent' ],
+			'start': templateData[ 'refStartIndex' ],
+			'end': templateData[ 'refEndIndex' ],
 			'params': paramPairs
 		});
-		
+
 		return ( refTemplate );
 	},
 
 	/**
-	 * Parse references in reference template's refs field
+	 * Parse references in reference template's refs field (using mw.Api)
 	 *
-	 * @param {object} reftemplate object
+	 * @param {object} refTemplate object
 	 *
  	 * @return {void} 
 	 */	
@@ -392,45 +423,38 @@ var refcon = {
 	 parseTemplateRefs: function ( refTemplate ) {
 		 
 		var refsNames = refcon.getOption( 'reftemplaterefsnames' );
-		var refsString, refsName, i;
+		var refsArray, refsName, i;
 		
 		if ( Array.isArray( refsNames ) ) {
 			if ( typeof refTemplate.params === 'object' ) {
 				for ( i = 0; i < refsNames.length; i++ ) {
 					refsName = refsNames[ i ];
 					if ( typeof refTemplate.params[ refsName ] !== 'undefined' ) {
-						refsString = refTemplate.params[ refsName ];
+						refsArray = refTemplate.params[ refsName ];
 						break;
 					}
 				}
 			}
 		} else {
 			// call some error handling function and halt
-		}
+		}		
 
-		if ( typeof refsString !== 'undefined' && refsString.length > 0) {
+		// Look for references inside the reference template's refs parameter
+		
+		if ( typeof refsArray !== 'undefined' && refsArray.length > 0) {
+			for ( i = 0; i < refsArray.length; i++ ) {
 
-			// Look for references inside the reference template's refs parameter
-
-			var referencesRegExp = /<ref(\s+name\s*=\s*(?:"[^"]+"|'[^']+'|[^ ]+)\s*)>([\s\S]+?)<\/ref>/ig,
-				match,
-				reference;
-				
-			while ( ( match = referencesRegExp.exec( refsString ) ) ) {
-								
 				// Turn all matches into reference objects
-				reference = refcon.parseReference( match, 'reference' );
-				
+				reference = refcon.parseReference( [ '', refsArray[i].attr, refsArray[i].inner ], 'reference' );
+
 				// Only add references that have name
 				if ( reference['name'].length > 0 ) {
 					refTemplate.addRef( reference );
 				}
 			}
 		}
-		
 		refcon.refTemplates.push( refTemplate );
-
-	},
+	},	
 		
 	/**
 	 * Make a reference object out of a reference string
@@ -681,13 +705,13 @@ var refcon = {
 	
 	processTextPartRefs: function ( textPart ) {
 		var i, reference, refTemplateIx, refTemplate, templateRef;
-		
+
 		for ( i = 0; i < textPart.references.length; i++ ) {
 			reference = textPart.references[ i ];
 			
 			refTemplateIx = textPart.inTemplates[ reference.group ];
 			refTemplate = refcon.refTemplates[ refTemplateIx ];
-			
+
 			// First add named references, because otherwise we could create new records (and names) 
 			// for already existing text part defined references
 			if ( reference.content.length > 0 && reference.name.length > 0 ) {
@@ -910,6 +934,8 @@ var refcon = {
 				referencesString += reference.toString() + "\n";
 			}
 		}
+		// Cut the last newline
+		referencesString = referencesString.substr( 0, referencesString.length - 1 );		
 		
 		var refTemplateNames = refcon.getOption( 'reftemplatenames' );
 
@@ -947,7 +973,7 @@ var refcon = {
 			templateString += '|' + refsName + "=\n" + referencesString;
 		}
 
-		templateString += '}}';
+		templateString += "\n}}";
 		
 		refTemplate.string = templateString;		
 	},
