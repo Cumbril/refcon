@@ -1,7 +1,7 @@
 ﻿// Make sure the document is ready and dependencies are loaded
 $.when (
 	$.ready,
-	mw.loader.using(['mediawiki.util', 'ext.gadget.xmlToJSON'])
+	mw.loader.using(['mediawiki.util'])
 	).done(function () {
 		// Only load on appropriate namespaces
 		var namespace = mw.config.get( 'wgNamespaceNumber' );
@@ -30,6 +30,10 @@ $.when (
 					'refcon-sortrefs': 'user'	// Whether references will be sorted alphabetically in reference template.
 												// Value can be 'yes', 'no', 'user'
 				});
+				mw.messages.set({
+					'refcon-parsereferror': "See viitestring tekitas vea:\n $1"
+				});
+				
 				// load xmlToJSON
 				mw.loader.load('https://localhost/xmlToJSON.min.js', 'text/javascript');
 				// load the main script

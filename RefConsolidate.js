@@ -57,6 +57,17 @@ var refcon = {
 	getOption: function ( key ) {
 		return mw.config.get( 'refcon-' + key );
 	},
+	
+	/**
+	 * Convenience method to get a RefCon message
+	 *
+	 * @param {string} message key without the "refcon-" prefix
+	 * @param {string} reference string
+	 * @return {string} message value
+	 */
+	getMessage: function ( key, param ) {
+		return mw.message( 'refcon-' + key, param );
+	},
 
 	/**
 	 * Convenience method to get the edit textbox
@@ -117,7 +128,7 @@ var refcon = {
 	 *
 	 * @return {void}
 	 */
-	main: function () {		
+	main: function () {
 		// This is a container function that calls subfunctions and passes their return values to other subfunctions
 		
 		// First, get indexes of reference templates in article, if there are any
@@ -154,7 +165,7 @@ var refcon = {
 			// These are text parts of an article that are located between reference templates
 
 			refcon.storeTextParts();
-
+			
 			// Process references in reference templates, remove duplicate keys and values
 
 			for ( i = 0; i < refcon.refTemplates.length; i++ ) {
@@ -483,26 +494,31 @@ var refcon = {
 				var re = /(?:(name|group)\s*=\s*(?:"([^"]+)"|'([^']+)'|([^ ]+)))(?:\s+(name|group)\s*=\s*(?:"([^"]+)"|'([^']+)'|([^ ]+)))?/i;
 
 				var match = refParamString.match(re);
-
-				if ( typeof match[1] !== 'undefined' && ( typeof match[2] !== 'undefined' || typeof match[3] !== 'undefined' || typeof match[4] !== 'undefined' ) ) {
-					if ( typeof match[2] !== 'undefined' ) {
-						params[ match[1] ] = match[2];
-					} else if ( typeof match[3] !== 'undefined' ) {
-						params[ match[1] ] = match[3];
-					} else {
-						params[ match[1] ] = match[4];
+				
+				try {
+					if ( typeof match[1] !== 'undefined' && ( typeof match[2] !== 'undefined' || typeof match[3] !== 'undefined' || typeof match[4] !== 'undefined' ) ) {
+						if ( typeof match[2] !== 'undefined' ) {
+							params[ match[1] ] = match[2];
+						} else if ( typeof match[3] !== 'undefined' ) {
+							params[ match[1] ] = match[3];
+						} else {
+							params[ match[1] ] = match[4];
+						}
 					}
+
+					if ( typeof match[5] !== 'undefined' && ( typeof match[6] !== 'undefined' || typeof match[7] !== 'undefined' || typeof match[8] !== 'undefined' ) ) {
+						if ( typeof match[6] !== 'undefined' ) {
+							params[ match[5] ] = match[6];
+						} else if ( typeof match[7] !== 'undefined' ) {
+							params[ match[5] ] = match[7];
+						} else {
+							params[ match[5] ] = match[8];
+						}
+					}
+				} catch ( e ) {
+					window.alert( refcon.getMessage( 'parsereferror', referenceString ) );
+					throw new Error( e );
 				}
-
-				if ( typeof match[5] !== 'undefined' && ( typeof match[6] !== 'undefined' || typeof match[7] !== 'undefined' || typeof match[8] !== 'undefined' ) ) {
-					if ( typeof match[6] !== 'undefined' ) {
-						params[ match[5] ] = match[6];
-					} else if ( typeof match[7] !== 'undefined' ) {
-						params[ match[5] ] = match[7];
-					} else {
-						params[ match[5] ] = match[8];
-					}
-				}			
 				
 				referenceName = params['name'] ? params['name'] : '';
 				referenceGroup = params['group'] ? params['group'] : '';
@@ -680,12 +696,11 @@ var refcon = {
 				reference;
 
 			while ( ( match = referencesRegExp.exec( textPart.string ) ) ) {
-								
 				// Avoid further processing of citations like <ref name="pm"></ref>
 				if ( match[2] === '' ) {
 					continue;
 				}
-				
+
 				// Turn all the matches into reference objects
 				reference = refcon.parseReference( match, 'reference' );
 
