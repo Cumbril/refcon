@@ -31,13 +31,18 @@ $.when (
 												// Value can be 'yes', 'no', 'user'
 				});
 				mw.messages.set({
-					'refcon-parsereferror': "See viitestring tekitas vea:\n $1"
+					'refcon-parsereferror': "See viitestring tekitas vea:\n$1"
 				});
-				
+
+				// cache loaded scripts for faster loading
+				$.ajaxSetup({
+					cache: true
+				});
 				// load xmlToJSON
-				mw.loader.load('https://localhost/xmlToJSON.min.js', 'text/javascript');
-				// load the main script
-				mw.loader.load('https://localhost/RefConsolidate.js', 'text/javascript');
+				$.getScript( "https://localhost/xmlToJSON.min.js", function() {
+					// load the main script
+					mw.loader.load('https://localhost/RefConsolidate.js', 'text/javascript');
+				});
 			}
 		}
 	}
