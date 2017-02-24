@@ -331,6 +331,7 @@ var refcon = {
 			var result = xmlToJSON.parseString( parsetree );
 			var i, templateRoot = result.root[0].template;
 
+			//@todo: could rewrite the code to use JSON.parse
 			for ( i = 0; i < templateRoot.length; i++ ) {
 				if ( templateRoot[ i ].title[0]['_text'] === mainRefTemplateName ) {
 					var paramPairs = {};
@@ -344,7 +345,9 @@ var refcon = {
 								name = part[ j ].name[0]['_attr']['index']['_value'];
 							}
 							name = typeof name === 'string' ? name.trim() : name;
-
+							
+							//@todo: if there is some text in refs parameter between references, ['_text'] is defined and value is set to
+							//this instead ['ext']
 							if ( typeof part[ j ].value[0]['_text'] !== 'undefined' ) {
 								value = part[ j ].value[0]['_text'];
 							} else if ( typeof part[ j ].value[0]['ext'] !== 'undefined' ) {
