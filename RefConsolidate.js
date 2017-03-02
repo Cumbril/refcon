@@ -345,7 +345,6 @@ var refcon = {
 								name = part[ j ].name[0]['_attr']['index']['_value'];
 							}
 							name = typeof name === 'string' ? name.trim() : name;
-							
 							//@todo: if there is some text in refs parameter between references, ['_text'] is defined and value is set to
 							//this instead ['ext']
 							if ( typeof part[ j ].value[0]['_text'] !== 'undefined' ) {
@@ -871,40 +870,51 @@ var refcon = {
 	 * Replace all references in TextPart object string with citations. Also replace citation names that were changed in previous steps
 	 *
 	 * @param {object} TextPart object
+	 *
+	 * @return {void}
 	 */	
 	
 	replaceTextPartRefs: function ( textPart ) {
-		var i, reference, citation, replaceString, refTemplateIx, refTemplate, replaceName;
-		
+		var i, reference, citation, replaceString, refTemplateIx, refTemplate, replaceName, useTemplateR = false;
+
+		// check if we should use template {{R}} for shorter citation format
+		useTemplateR = refcon.useConfigOption( refcon.getOption( 'usetemplateR' ), 'usetemplateR' );
+
 		for ( i = 0; i < textPart.references.length; i++ ) {
 			reference = textPart.references[ i ];
-			
+
 			if ( typeof reference.citation === 'object' ) {
 				citation = reference.citation;
-				
+
 				if ( typeof citation === 'object' && citation.name.length > 0 ) {
-					replaceString = citation.toString();
+					if ( useTemplateR === true )
+						replaceString = citation.toStringR();
+					else
+						replaceString = citation.toString();
 					textPart.string = textPart.string.replace( reference.string, replaceString );
 				}
 			}
 		}
-		
+
 		for ( i = 0; i < textPart.citations.length; i++ ) {
 			citation = textPart.citations[ i ];
-			
+
 			refTemplateIx = textPart.inTemplates[ citation.group ];
 			refTemplate = refcon.refTemplates[ refTemplateIx ];
-			
+
 			if ( citation.name.length > 0 ) {
-				
+
 				// If there is replacement name in replacements object, replace the citation name
 				replaceName = refTemplate.replacements[ citation.name ];
-				
+
 				if ( typeof replaceName !== 'undefined' ) {
 					citation.name = replaceName;
-				}				
-				
-				replaceString = citation.toString();
+				}
+
+				if ( useTemplateR === true )
+					replaceString = citation.toStringR();
+				else
+					replaceString = citation.toString();
 				textPart.string = textPart.string.replace( citation.string, replaceString );
 			}
 		}		
@@ -914,31 +924,17 @@ var refcon = {
 	 * Build reference templates
 	 *
 	 * @param {object} RefTemplate object
+	 *
+	 * @return {void}
 	 */	
 	
 	buildRefTemplates: function ( refTemplate ) {
 		var i, reference, referencesString = '', refsAdded = false, sortRefs = false;
 
 		// sort references depending on config and user config settings
-		var sortRefsOption = refcon.getOption( 'sortrefs' );
+		sortRefs = refcon.useConfigOption( refcon.getOption( 'sortrefs' ), 'sort' );
 
-		switch ( sortRefsOption ) {
-		  case 'yes':
-			sortRefs = true;
-			break;
-		  case 'no':
-			sortRefs = false;
-			break;
-		  case 'user':
-			if ( typeof refConsolidateConfig === 'object' && typeof refConsolidateConfig.sort !== 'undefined' && refConsolidateConfig.sort === true ) {
-				sortRefs = true;
-			}
-			break;
-		  default:
-			sortRefs = false;
-		}
-
-		if ( sortRefs ===  true ) {
+		if ( sortRefs === true ) {
 			var contentLanguage = mw.config.get( 'wgContentLanguage' );
 
 			refTemplate.references.sort( function( a,b ) {
@@ -995,11 +991,40 @@ var refcon = {
 		
 		refTemplate.string = templateString;		
 	},
-	
+
+	/**
+	 * Verify if configuration option should be used. Return true or false
+	 *
+	 * @param {string} Refcon option as returned by refcon.getOption method
+	 * @param {string} User configuration variable content
+	 *
+	 * @return {boolean} True of false
+	 */
+
+	useConfigOption: function ( configOptionValue, userConfigOptionName ) {
+		var result = false;
+		switch ( configOptionValue ) {
+		  case 'yes':
+			result = true;
+			break;
+		  case 'no':
+			result = false;
+			break;
+		  case 'user':
+			if ( typeof refConsolidateConfig === 'object' && typeof refConsolidateConfig[ userConfigOptionName ] !== 'undefined' && refConsolidateConfig[ userConfigOptionName ] === true ) {
+				result = true;
+			}
+			break;
+		  default:
+			result = false;
+		}
+		return ( result );	
+	},	
 
 	/**
 	 * Write text parts and reference templates into textbox variable
 	 *
+	 * @return {string} String that contains article text
 	 */	
 	
 	writeTextBoxText: function () {
@@ -1155,20 +1180,36 @@ var refcon = {
 		 * Convert this citation to wikitext
 		 */
 		this.toString = function () {
-			
+
 			var string = '<ref';
 			if ( this.name ) {
 				string += ' name="' + this.name + '"';
 			}
 			if ( this.group ) {
 				string += ' group="' + this.group + '"';
-			}			
+			}
 			string += ' />';
 
 			return string;
 		};
+
+		/**
+		 * Convert this citation to wikitext using template {{R}} format (short citation format)
+		 */
+		this.toStringR = function () {
+
+			var string = '{{r';
+			if ( this.group ) {
+				string += '|g=' + this.group;
+			}
+			if ( this.name ) {
+				string += '|' + this.name;
+			}			
+			string += '}}';
+
+			return string;
+		};
 	},
-	
 	
 	/**
 	 * Reference class

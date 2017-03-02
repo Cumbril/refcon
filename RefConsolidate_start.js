@@ -27,13 +27,14 @@ $.when (
 						'allikad',
 						'refs'
 					],
-					'refcon-sortrefs': 'user'	// Whether references will be sorted alphabetically in reference template.
+					'refcon-sortrefs': 'user',	// Whether references will be sorted alphabetically in reference template.
 												// Value can be 'yes', 'no', 'user'
+					'refcon-usetemplateR': 'no'	// Whether to use template {{R}} for citations. See [[:en:Template:R]].
+													// Value can be 'yes', 'no', 'user'
 				});
 				mw.messages.set({
 					'refcon-parsereferror': "See viitestring tekitas vea:\n$1"
 				});
-
 				// cache loaded scripts for faster loading
 				$.ajaxSetup({
 					cache: true
