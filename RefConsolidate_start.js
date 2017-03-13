@@ -29,12 +29,18 @@ $.when (
 					],
 					'refcon-sortrefs': 'user',	// Whether references will be sorted alphabetically in reference template.
 												// Value can be 'yes', 'no', 'user'
-					'refcon-usetemplateR': 'no'	// Whether to use template {{R}} for citations. See [[:en:Template:R]].
+					'refcon-usetemplateR': 'no',	// Whether to use template {{R}} for citations. See [[:en:Template:R]].
 													// Value can be 'yes', 'no', 'user'
+					'refcon-image-yes': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/Yes_check.svg/240px-Yes_check.svg.png',
+					'refcon-image-no': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/X_mark.svg/210px-X_mark.svg.png'
 				});
 				mw.messages.set({
-					'refcon-parsereferror': "See viitestring tekitas vea:\n$1"
+					'refcon-parsereferror': "See viitestring tekitas vea:\n$1",
+					'refcon-parserefforbidden': "Viite nimi sisaldab keelatud tähemärke (\", <):\n$1"
 				});
+				
+				mw.loader.load('https://localhost/RefConsolidate.css', 'text/css');
+				
 				// cache loaded scripts for faster loading
 				$.ajaxSetup({
 					cache: true

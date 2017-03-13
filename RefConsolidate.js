@@ -518,21 +518,24 @@ var refcon = {
 						}
 					}
 				} catch ( e ) {
-					window.alert( refcon.getMessage( 'parsereferror', referenceString ) );
-					throw new Error( e );
+					refcon.throwReferenceError( referenceString, refcon.getMessage( 'parsereferror', referenceString ), e );
 				}
 				
 				referenceName = params['name'] ? params['name'] : '';
 				referenceGroup = params['group'] ? params['group'] : '';
 			}
 		}
-		
+
 		if ( typeof referenceGroup === 'undefined' )
 			referenceGroup = '';
-		
+
 		if ( typeof referenceName === 'undefined' )
-			referenceName = '';		
+			referenceName = '';
 		
+		if ( referenceName.match(/[<"]/) !== null ) {
+			refcon.throwReferenceError( referenceString, refcon.getMessage( 'parserefforbidden', referenceString ) );
+		}
+
 		// Clean reference name and content of newlines, double spaces, leading or trailing whitespace and more
 		
 		referenceName = refcon.cleanString( referenceName, 'name' );
@@ -562,6 +565,13 @@ var refcon = {
 		return reference;
 	},
 	
+	throwReferenceError: function ( referenceString, message, error ) {
+		var found = refcon.getTextbox().val().match( refcon.escapeRegExp( referenceString ) );
+		refcon.highlight( found.index, referenceString );
+		window.alert( message );
+		refcon.cleanUp();
+		throw new Error( error );
+	},
 	
 	/**
 	 * Clean reference name and content of newlines, double spaces, leading or trailing whitespace, etc
@@ -589,6 +599,34 @@ var refcon = {
 		return (str);
 	},
 
+	escapeRegExp: function ( str ) {
+		return str.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
+	},
+
+	/**
+	 * Highlight string in the textbox and scroll it to view
+	 *
+	 * @return {void}
+	 */
+	highlight: function ( index, string ) {
+		var textbox = refcon.getTextbox()[0],
+			text = textbox.value;
+
+		// Scroll to the string
+		textbox.value = text.substring( 0, index );
+		textbox.focus();
+		textbox.scrollTop = 99999999; // Larger than any real textarea (hopefully)
+		var currentScrollTop = textbox.scrollTop;
+		textbox.value += text.substring( index );
+		if ( currentScrollTop > 0 ) {
+			textbox.scrollTop = currentScrollTop + 300;
+		}
+
+		// Highlight the string
+		var start = index,
+			end = start + string.length;
+		$( textbox ).focus().textSelection( 'setSelection', { 'start': start, 'end': end } );
+	},
 
 	/**
 	 * Turn all article text parts – parts that are between reference templates – into objects and save into array
@@ -1102,8 +1140,20 @@ var refcon = {
 			randomString += charSet.substring( randomPoz, randomPoz+1 );
 		}
 		return randomString;
-	},	
-	
+	},
+
+	/**
+	 * Empty refcon arrays before script exit
+	 *
+	 * @return {void}
+	 */
+	cleanUp: function () {
+		refcon.refTemplates = [];
+		refcon.templateGroups = [];
+		refcon.textParts = [];
+		refcon.textBoxText = [];
+	},
+
 	/**
 	 * TextPart class
 	 *
