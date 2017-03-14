@@ -36,7 +36,7 @@ $.when (
 				});
 				mw.messages.set({
 					'refcon-parsereferror': "See viitestring tekitas vea:\n$1",
-					'refcon-parserefforbidden': "Viite nimi sisaldab keelatud tähemärke (\", <):\n$1"
+					'refcon-parserefforbidden': "Viite nimi sisaldab keelatud tähemärke [$1]:\n$2"
 				});
 				
 				mw.loader.load('https://localhost/RefConsolidate.css', 'text/css');

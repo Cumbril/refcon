@@ -62,11 +62,11 @@ var refcon = {
 	 * Convenience method to get a RefCon message
 	 *
 	 * @param {string} message key without the "refcon-" prefix
-	 * @param {string} reference string
+	 * @param {array} array of replacements
 	 * @return {string} message value
 	 */
 	getMessage: function ( key, param ) {
-		return mw.message( 'refcon-' + key, param );
+		return new mw.Message( mw.messages, 'refcon-' + key, param ).text();
 	},
 
 	/**
@@ -518,7 +518,7 @@ var refcon = {
 						}
 					}
 				} catch ( e ) {
-					refcon.throwReferenceError( referenceString, refcon.getMessage( 'parsereferror', referenceString ), e );
+					refcon.throwReferenceError( referenceString, refcon.getMessage( 'parsereferror', [ referenceString ] ), e );
 				}
 				
 				referenceName = params['name'] ? params['name'] : '';
@@ -531,9 +531,10 @@ var refcon = {
 
 		if ( typeof referenceName === 'undefined' )
 			referenceName = '';
-		
-		if ( referenceName.match(/[<"]/) !== null ) {
-			refcon.throwReferenceError( referenceString, refcon.getMessage( 'parserefforbidden', referenceString ) );
+
+		var found = referenceName.match(/[<"]/);
+		if ( found !== null ) {
+			refcon.throwReferenceError( referenceString, refcon.getMessage( 'parserefforbidden', [ found[0], referenceString ] ));
 		}
 
 		// Clean reference name and content of newlines, double spaces, leading or trailing whitespace and more
