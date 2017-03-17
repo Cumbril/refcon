@@ -1,0 +1,10 @@
+﻿.refcon {border-collapse:collapse;border-spacing:0;border-color:#aaa;border:none;}
+.refcon table{width: 100%;}
+.refcon td{font-family:Arial, sans-serif;font-size:14px;padding:10px 5px;border-style:solid;border-width:0px;overflow:hidden;word-break:normal;border-color:#aaa;color:#333;background-color:#fff;}
+.refcon th{font-family:Arial, sans-serif;font-size:14px;font-weight:bold;padding:10px 5px;border-style:solid;border-width:0px;overflow:hidden;word-break:normal;border-color:#aaa;color:#fff;background-color:#f38630;}
+.refcon .refcon-odd{background-color:#FCFBE3;vertical-align:top;}
+.refcon .refcon-even{vertical-align:top;}
+.refcon .refcon-label{font-weight:bold;}
+.refcon img{height: 15px;}
+.refcon button{margin: 0px 15px;}
+.refcon-container{position:fixed;top:5%;left:10%;width:80%;height:90%;box-sizing:border-box;box-shadow:0 0 30px #808080;padding:1em;background-color:white;overflow:auto;z-index:1000;}

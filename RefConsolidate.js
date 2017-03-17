@@ -17,35 +17,35 @@
 ( function ( mw, $ ) {
 
 var refcon = {
-	
+
 	/**
 	 * This variable holds edit textbox text that is modified throughout the script
 	 *
 	 * @type {string}
 	 */
 	textBoxText: '',
-	
+
 	/**
 	 * This array holds reference template groups in the order that they appear in article
 	 *
 	 * @type {array}
-	 */		
+	 */
 	templateGroups: [],
-	
+
 	/**
 	 * This array holds reference templates in the order that they appear in article
 	 *
 	 * @type {array}
-	 */				
-	
+	 */
+
 	refTemplates: [],
 
 	/**
 	 * This array holds article text parts that are between reference templates
 	 *
 	 * @type {array}
-	 */				
-	
+	 */
+
 	textParts: [],
 
 	/**
@@ -57,7 +57,7 @@ var refcon = {
 	getOption: function ( key ) {
 		return mw.config.get( 'refcon-' + key );
 	},
-	
+
 	/**
 	 * Convenience method to get a RefCon message
 	 *
@@ -76,7 +76,7 @@ var refcon = {
 	 */
 	getTextbox: function () {
 		return $( '#wpTextbox1' );
-	},	
+	},
 
 	/**
 	 * Initialization. Sets up script execution link. If the link is clicked, calls main function
@@ -84,6 +84,12 @@ var refcon = {
 	 * @return {void}
 	 */
 	init: function () {
+
+		$([ refcon.getOption( 'image-yes' ),
+			refcon.getOption( 'image-no' )
+		]).each( function() {
+				$('<img/>')[0].src = this;
+			});
 
 		var linkname = refcon.getOption( 'linkname' ), 
 			linkhover = refcon.getOption( 'linkhover' );
@@ -108,21 +114,21 @@ var refcon = {
 				});
 			}
 		}
-				
+
 		// Only load when editing
 		var action = mw.config.get( 'wgAction' );
-		
+
 		if ( action === 'edit' || action === 'submit' ) {
 			// Only if the portlet link was clicked
 			if ( mw.util.getParamValue('RefCon') ) {
 				 // Only if there is wpTextbox1 on the page
-				if ( document.getElementById('wpTextbox1') ) {					
-					refcon.main();					
+				if ( document.getElementById('wpTextbox1') ) {
+					refcon.main();
 				}
 			}
 		}
 	},
-	
+
 	/**
 	 * Main function. Calls specific subfunctions
 	 *
@@ -130,12 +136,12 @@ var refcon = {
 	 */
 	main: function () {
 		// This is a container function that calls subfunctions and passes their return values to other subfunctions
-		
+
 		// First, get indexes of reference templates in article, if there are any
 		var indexes = refcon.parseIndexes(), i;
-		
+
 		if ( indexes.length > 0 ) {
-			
+
 			var templateDataList = [], templatesString = '';
 
 			// Go through indexes array
@@ -156,7 +162,7 @@ var refcon = {
 			var paramPairsList = refcon.getTemplateParams( templatesString );
 
 			for ( i = 0; i < templateDataList.length; i++ ) {
-				var paramsPair = typeof paramPairsList[ i ] !== 'undefined' ? paramPairsList[ i ] : {};				
+				var paramsPair = typeof paramPairsList[ i ] !== 'undefined' ? paramPairsList[ i ] : {};
 				var refTemplate = refcon.getTemplateObject( templateDataList[ i ], paramsPair );
 				refcon.parseTemplateRefs( refTemplate );
 			}
@@ -165,7 +171,7 @@ var refcon = {
 			// These are text parts of an article that are located between reference templates
 
 			refcon.storeTextParts();
-			
+
 			// Process references in reference templates, remove duplicate keys and values
 
 			for ( i = 0; i < refcon.refTemplates.length; i++ ) {
@@ -185,18 +191,34 @@ var refcon = {
 				refcon.processTextPartRefs( refcon.textParts[ i ] );
 			}
 
-			// Replace references inside text part strings with citations
+			// Link textPart citations to references
 
+			for ( i = 0; i < refcon.textParts.length; i++ ) {
+				refcon.linkCitations( refcon.textParts[ i ] );
+			}
+
+			// Show form with references
+			refcon.showForm();
+
+		} else {
+			refcon.showDifferenceView();
+		}
+	},
+
+	/**
+	 * Continue processing after form. Commit changes and show the differences view
+	 *
+	 * @return {void}
+	 */
+	commit: function () {
+			// Replace references inside text part strings with citations
 			for ( i = 0; i < refcon.textParts.length; i++ ) {
 				refcon.replaceTextPartRefs( refcon.textParts[ i ] );
 			}
-
 			// Build reference templates
-
 			for ( i = 0; i < refcon.refTemplates.length; i++ ) {
 				refcon.buildRefTemplates( refcon.refTemplates[ i ] );
 			}
-
 			var newText = refcon.writeTextBoxText();
 			var textbox = refcon.getTextbox();
 			var oldText = textbox.val();
@@ -207,20 +229,126 @@ var refcon = {
 				// Add summary
 				refcon.addSummary();
 			}
-		}
-		// Set minor edit checkbox and click View Differences button
-		document.forms.editform.wpMinoredit.checked = true;
-		document.forms.editform.wpDiff.click();
+			refcon.showDifferenceView();
 	},
-	
+
+	/**
+	 * Show form with references
+	 *
+	 * @return {void}
+	 */
+	showForm: function () {
+
+		var $container = $('<div id="refconContainer"></div>').addClass('refcon-container');
+		var $form = $('<form id="refconForm"></form>');
+		var $table = $('<table></table>').addClass('refcon');
+		$table.append('<tr><th></th><th>#</th><th>'+refcon.getMessage( 'name' )+'</th><th>'+refcon.getMessage( 'reference' )+'</th><th>'+refcon.getMessage( 'referenceuses' )+'</th></tr>');
+
+		var i;
+		for ( i = 0; i < refcon.refTemplates.length; i++ ) {
+			var refTemplate = refcon.refTemplates[ i ];
+			$table.append('<tr><td class="refcon-label" colspan="5" align="center">'
+							+ refcon.getMessage( 'refstemplateno' ) + ' ' + ( i + 1 )
+							+ (refcon.templateGroups[ i ].length > 0 ? ' (' + refcon.getMessage( 'referencegroup' ) + ': ' + refcon.templateGroups[ i ] + ')' : '')
+							+ '</td></tr>');
+			var j, k = 0;
+			for ( j = 0; j < refTemplate.references.length; j++ ) {
+				var reference = refTemplate.references[ j ];
+				if ( reference ) {
+					k++;
+					var cssClass = k % 2 == 0 ? 'refcon-even' : 'refcon-odd';
+					$table.append(
+					'<tr>'
+					+ '<td class="' + cssClass + '"><img src="' + refcon.getOption( 'image-yes' ) + '"></td>'
+					+ '<td class="' + cssClass + '" align="center">' + k + '</td>'
+					+ '<td class="' + cssClass + '"><input type="text" template_id="' + i + '" name="' + j + '" value="' + reference.name + '"></td>'
+					+ '<td class="' + cssClass + '">' + reference.content + '</td>'
+					+ '<td class="' + cssClass + '" align="center">' + reference.citations.length + '</td>'
+					+ '</tr>');
+				}
+			}
+		}
+		$table.append('<tr><td colspan="4" align="center"><button type="button" id="abort">'
+						+ refcon.getMessage( 'buttonabort' )+'</button><button type="button" id="continue">'
+						+ refcon.getMessage( 'buttoncontinue' )+'</button></td></tr>');
+		$container.append( $form.append( $table ) ).appendTo('body');
+
+		$table.find('input').on('input', function() {
+			$table.find('#continue').removeAttr('disabled');
+		});
+
+		$table.find('#abort').on('click', function() {
+			$container.remove();
+			refcon.cleanUp();
+		});
+
+		$table.find('#continue').on('click', function( event ) {
+			refcon.validateInput();
+			if ( $table.find('[data-invalid]').length === 0 ) {
+				refcon.changeReferenceData();
+			} else {
+				$table.find('#continue').attr('disabled', true);
+			}
+		});
+	},
+
+	validateInput: function () {
+		var names = {}, duplicateNames = {}, i;
+
+		for ( i = 0; i < refcon.templateGroups.length; i++ ) {
+			names[ i ] = {};
+			duplicateNames[ i ] = {};
+		}
+
+		$('#refconForm input').each(function() {
+			if ( $(this).val() in names[ $(this).attr('template_id') ] ) {
+				duplicateNames[ $(this).attr('template_id') ][ $(this).val() ] = 1;
+			} else {
+				names[ $(this).attr('template_id') ][ $(this).val() ] = 1;
+			}
+		});
+
+		$('#refconForm input').each(function() {
+			if ( $(this).val() in duplicateNames[ $(this).attr('template_id') ] ) {
+				refcon.markFieldAsInvalid( $(this) );
+			} else if ( $(this).val() === '' ) {
+				refcon.markFieldAsInvalid( $(this) );
+			} else if ( $(this).val().match(/[<"]/) !== null ) {
+				refcon.markFieldAsInvalid( $(this) );
+			} else {
+				refcon.markFieldAsValid( $(this) );
+			}
+		});
+	},
+
+	markFieldAsValid: function ( inputField ) {
+		$( inputField ).removeAttr( 'data-invalid' );
+		$( inputField ).closest('tr').find('img').attr('src', refcon.getOption( 'image-yes' ));
+	},
+
+	markFieldAsInvalid: function ( inputField ) {
+		$( inputField ).attr('data-invalid', 1);
+		$( inputField ).closest('tr').find('img').attr('src', refcon.getOption( 'image-no' ));
+	},
+
+	changeReferenceData: function () {
+		$('#refconForm input').each(function() {
+			var name = $(this).val();
+			var templateId = $(this).attr('template_id');
+			var refId = $(this).attr('name');
+			refcon.refTemplates[ templateId ].references[ refId ].changeName( name );
+		});
+		refcon.commit();
+	},
+
 	/**
 	 * Parse article text and find all reference templates indexes
 	 *
 	 * @return {array} Start indexes of all reference templates
-	 */	
-	
+	 */
+
 	parseIndexes: function () {
-		
+
 		var refTemplateNames = refcon.getOption( 'reftemplatenames' );
 
 		var wikitext = refcon.getTextbox().val(),
@@ -229,13 +357,13 @@ var refcon = {
 		// Make all appearances of the reference templates in article text uniform
 		if ( Array.isArray( refTemplateNames ) ) {
 			var refTemplateName = refTemplateNames[0];
-			
+
 			for ( i = 0; i < refTemplateNames.length; i++ ) {
 				name = refTemplateNames[ i ];
 				re = new RegExp( '{{\s*' + name, 'gi' );
 				wikitext = wikitext.replace( re, '{{' + refTemplateName );
 			}
-			
+
 			// Find all indexes of the reference template in the article and put them into array
 			// Index is the place in article text where references template starts
 			var pos = wikitext.indexOf( '{{' + refTemplateName );
@@ -251,10 +379,10 @@ var refcon = {
 		} else {
 			// call some error handling function and halt
 		}
-		
+
 		// Set the refcon variable with modified wikitext
 		refcon.textBoxText = wikitext;
-		
+
 		return ( refTemplateIndexes );
 
 	},
@@ -266,13 +394,13 @@ var refcon = {
 	 * @param {integer} next reference template's index in article text
 	 *
 	 * @return {object} reference template's content string, start and end indexes
-	 */	
+	 */
 
 	 getTemplateContent: function (templateIndex, nextTemplateIndex) {
 
 		var	textPart = refcon.textBoxText.substring(templateIndex, nextTemplateIndex);
 		var i, depth = 1, prevChar = '', templateEndIndex = 0, templateAbsEndIndex = null, templateContent = '';
-		
+
 		// Go through the textPart and find the template's end code '}}'
 		// @todo: could use ProveIt's alternative code here
 		for ( i = 2; i < nextTemplateIndex; i++ ) {
@@ -286,9 +414,9 @@ var refcon = {
 			}
 			prevChar = textPart.charAt(i);
 		}
-		
+
 		// If templateEndIndex is 0, reference template's ending '}}' is missing in the textPart
-		
+
 		if ( templateEndIndex > 0 ) {
 			templateContent = textPart.substring(0, templateEndIndex);
 			templateAbsEndIndex = templateIndex + templateEndIndex;
@@ -299,9 +427,9 @@ var refcon = {
 			'refStartIndex' : templateIndex,
 			'refEndIndex': templateAbsEndIndex
 		});
-		
+
 	},
-	
+
 	/**
 	 * Get all reference templates' name and value pairs using a single mw.Api call
 	 *
@@ -318,7 +446,7 @@ var refcon = {
 		if ( Array.isArray( refTemplateNames ) ) {
 			var mainRefTemplateName = refTemplateNames[0];
 		} else {
-			// call some error handling function and halt			
+			// call some error handling function and halt
 		}
 
 		// We will do a single API call to get all reflist templates parameter pairs
@@ -385,7 +513,7 @@ var refcon = {
 	 * @param {object} reference template parameter pairs object with param names and values
 	 *
 	 * @return {object} reference template object
-	 */	
+	 */
 
 	 getTemplateObject: function ( templateData, paramPairs ) {
 
@@ -431,13 +559,13 @@ var refcon = {
 	 * @param {object} refTemplate object
 	 *
  	 * @return {void} 
-	 */	
+	 */
 
 	 parseTemplateRefs: function ( refTemplate ) {
 		 
 		var refsNames = refcon.getOption( 'reftemplaterefsnames' );
 		var refsArray, refsName, i;
-		
+
 		if ( Array.isArray( refsNames ) ) {
 			if ( typeof refTemplate.params === 'object' ) {
 				for ( i = 0; i < refsNames.length; i++ ) {
@@ -450,10 +578,10 @@ var refcon = {
 			}
 		} else {
 			// call some error handling function and halt
-		}		
+		}
 
 		// Look for references inside the reference template's refs parameter
-		
+
 		if ( typeof refsArray !== 'undefined' && refsArray.length > 0) {
 			for ( i = 0; i < refsArray.length; i++ ) {
 
@@ -467,8 +595,8 @@ var refcon = {
 			}
 		}
 		refcon.refTemplates.push( refTemplate );
-	},	
-		
+	},
+
 	/**
 	 * Make a reference object out of a reference string
 	 *
@@ -482,7 +610,7 @@ var refcon = {
 		var params = {}, referenceName, referenceGroup,
 			referenceString = data[0], refParamString = data[1],
 			referenceContent = data[2], referenceIndex = data.index;
-			
+
 		if (typeof refParamString !== 'undefined') {
 			refParamString = refParamString.trim();
 
@@ -496,7 +624,7 @@ var refcon = {
 				var re = /(?:(name|group)\s*=\s*(?:"([^"]+)"|'([^']+)'|([^ ]+)))(?:\s+(name|group)\s*=\s*(?:"([^"]+)"|'([^']+)'|([^ ]+)))?/i;
 
 				var match = refParamString.match(re);
-				
+
 				try {
 					if ( typeof match[1] !== 'undefined' && ( typeof match[2] !== 'undefined' || typeof match[3] !== 'undefined' || typeof match[4] !== 'undefined' ) ) {
 						if ( typeof match[2] !== 'undefined' ) {
@@ -520,7 +648,7 @@ var refcon = {
 				} catch ( e ) {
 					refcon.throwReferenceError( referenceString, refcon.getMessage( 'parsereferror', [ referenceString ] ), e );
 				}
-				
+
 				referenceName = params['name'] ? params['name'] : '';
 				referenceGroup = params['group'] ? params['group'] : '';
 			}
@@ -538,12 +666,12 @@ var refcon = {
 		}
 
 		// Clean reference name and content of newlines, double spaces, leading or trailing whitespace and more
-		
+
 		referenceName = refcon.cleanString( referenceName, 'name' );
-		
+
 		if ( typeof referenceContent !== 'undefined' )
 			referenceContent = refcon.cleanString( referenceContent, 'content' );
-		
+
 		if ( type === 'reference' ) {
 			// Build the basic reference
 			var reference = new refcon.Reference({
@@ -560,12 +688,11 @@ var refcon = {
 				'name': referenceName,
 				'index': referenceIndex,
 				'string': referenceString
-			});				
+			});
 		}
-
 		return reference;
 	},
-	
+
 	throwReferenceError: function ( referenceString, message, error ) {
 		var found = refcon.getTextbox().val().match( refcon.escapeRegExp( referenceString ) );
 		refcon.highlight( found.index, referenceString );
@@ -573,7 +700,7 @@ var refcon = {
 		refcon.cleanUp();
 		throw new Error( error );
 	},
-	
+
 	/**
 	 * Clean reference name and content of newlines, double spaces, leading or trailing whitespace, etc
 	 *
@@ -581,8 +708,8 @@ var refcon = {
 	 * @param (string) whether the string is name or content
 	 *
 	 * @return {string} cleaned reference name and content
-	 */	
-	
+	 */
+
 	cleanString: function ( str, type ) {
 
 		// get rid of newlines and trailing/leading space
@@ -590,13 +717,13 @@ var refcon = {
 
 		// get rid of double whitespace inside string
 		str = str.replace(/\s\s+/g, ' ');
-		
+
 		// if the str is content, get rid of extra space before template closing / after template opening
 		if ( type === 'content') {
 			str = str.replace(/ }}/g, '}}');
 			str = str.replace(/{{ /g, '{{');
 		}
-		
+
 		return (str);
 	},
 
@@ -633,15 +760,15 @@ var refcon = {
 	 * Turn all article text parts – parts that are between reference templates – into objects and save into array
 	 *
 	 * @return {void}
-	 */	
-	
+	 */
+
 	storeTextParts: function () {
 		var i, text, refEnd, from, to, textPart;
 
 		for ( i = 0; i < refcon.refTemplates.length; i++ ) {
 
 			from = refEnd ? refEnd : 0;
-			
+
 			to = refcon.refTemplates[ i ]['start'];
 			refEnd = refcon.refTemplates[ i ]['end'];
 
@@ -650,7 +777,7 @@ var refcon = {
 			}
 
 			text = refcon.textBoxText.substring( from, to );
-		
+
 			// Textpart's references can only be in templates that come after the textpart in article text
 			var j, groupName, groupNames = {};
 
@@ -661,47 +788,47 @@ var refcon = {
 					groupNames[ groupName ] = j;
 				}
 			}
-			
+
 			// @todo: check what happens if a reference template follows another reference template without any space.
 			// Does textpart still get correct inTemplate sequence?
-			
+
 			// Create new TextPart object and store it
-			
+
 			textPart = new refcon.TextPart({
 				'start': from,
 				'end': to,
 				'string': text,
 				'inTemplates': groupNames
 			});
-			
+
 			refcon.textParts.push( textPart );
 		}
-		
+
 		// Add the last text part after the last reference template
 		if ( typeof refEnd === 'number' && refEnd > 0 ) {
 			if ( refcon.textBoxText.length > refEnd ) {
-				
+
 				text = refcon.textBoxText.substring( refEnd, refcon.textBoxText.length );
-				
+
 				textPart = new refcon.TextPart({
 					'start': refEnd,
 					'end': refcon.textBoxText.length,
 					'string': text
 				});
-				
+
 				refcon.textParts.push( textPart );
 			}
 		}
 	},
-	
+
 	/**
 	 * Find all references and citations in a TextPart object and store them in the object.
 	 *
 	 * @param {object} TextPart object
-	 */	
-	
+	 */
+
 	parseTextParts: function ( textPart ) {
-		
+
 		if ( typeof textPart.string !== 'undefined' && textPart.string.length > 0 ) {
 
 			// Look for all citations
@@ -711,7 +838,7 @@ var refcon = {
 			// Ref label can have optional group parameter:
 			// <ref group="blah" name="CV Kontrollikoda"/> or <ref name="CV Kontrollikoda" group="blah"/>
 			// Group and name parameter values can be between '' or "", or bare (if value has no whitespaces)
-			
+
 			var citations = [],
 				citationsRegExp = /<ref(\s+[^/>]+)(?:\/\s*>|><\/ref>)/ig,
 				match,
@@ -722,13 +849,13 @@ var refcon = {
 				// Turn all the matches into citation objects
 				citation = refcon.parseReference( match, 'citation' );
 
-				if ( typeof citation === 'object' && typeof citation.name !== 'undefined' ) {					
-					citations.push( citation );					
+				if ( typeof citation === 'object' && typeof citation.name !== 'undefined' ) {
+					citations.push( citation );
 				}
 			}
 
 			textPart.citations = citations;
-			
+
 			// Look for all references
 
 			var references = [],
@@ -747,193 +874,170 @@ var refcon = {
 
 				references.push( reference );
 			}
-			
+
 			textPart.references = references;
 		}
 	},
 
 	/**
 	 * Compare references in a TextPart object to the references in reference template (if there are any). Add references into
-	 * reference template. Update indexes. Create citation object for the reference in TextPart object
+	 * reference template. Update indexes. For each reference create citation object and link it with reflist template reference.
 	 *
 	 * @param {object} TextPart object
-	 */	
-	
+	 */
 	processTextPartRefs: function ( textPart ) {
-		var i, reference, refTemplateIx, refTemplate, templateRef;
+		var i, reference, refTemplateIx, refTemplate, templateRef,
+			createdCitations = [];
 
 		for ( i = 0; i < textPart.references.length; i++ ) {
 			reference = textPart.references[ i ];
-			
+
 			refTemplateIx = textPart.inTemplates[ reference.group ];
 			refTemplate = refcon.refTemplates[ refTemplateIx ];
 
 			// First add named references, because otherwise we could create new records (and names) 
 			// for already existing text part defined references
 			if ( reference.content.length > 0 && reference.name.length > 0 ) {
-					
+
 				// First check if this a complete duplicate reference (name and value are the same)
 				templateRef = refcon.getRefByIndex( refTemplate, 'keyValues', reference.name + '_' + reference.content );
-				
+
 				if ( typeof templateRef === 'object' ) {
 					if ( templateRef.name === reference.name && templateRef.content === reference.content ) {
 						// found exact duplicate
-
 						var citation = new refcon.Citation({
 							'group': reference.group,
-							'name': reference.name
+							'name': reference.name,
+							'index': reference.index,
+							'string': reference.string
 						});
-						reference.citation = citation;
-
+						templateRef.citations.push( citation );
+						createdCitations.push( citation );
 						continue;
 					}
 				}
-
 				// Check if the reference has the same name but different content than template reference
 				templateRef = refcon.getRefByIndex( refTemplate, 'keys', reference.name );
 
 				if ( typeof templateRef === 'object' ) {
 					if ( templateRef.name === reference.name && templateRef.content !== reference.content ) {
 						// found reference with the same name but different content
-						
+
 						// add reference content to template references under new name
 						var newName = refTemplate.getNewName( reference.name );
 						var newRef = new refcon.Reference({
 							'group': reference.group,
 							'name': newName,
 							'content': reference.content
-						});							
-						
-						refTemplate.addRef( newRef );
-						
+						});
 						var citation = new refcon.Citation({
 							'group': reference.group,
-							'name': newName
-						});							
-						reference.citation = citation;
-						
+							'name': newName,
+							'index': reference.index,
+							'string': reference.string
+						});
+						newRef.citations.push( citation );
+						refTemplate.addRef( newRef );
+						createdCitations.push( citation );
 						// add names into replacements object, so we can replace all citation names that use the old name
-						
 						refTemplate.replacements[ reference.name ] = newName;
-						
 						continue;
 					}
 				}
-				
 				// Check if the reference has the same content but different name than template reference
 				templateRef = refcon.getRefByIndex( refTemplate, 'values', reference.content );
 
 				if ( typeof templateRef === 'object' ) {
 					if ( templateRef.content === reference.content && templateRef.name !== reference.name ) {
-						// found reference with the same content but different name
-
-						// drop reference name, use template reference name for citation
+						// Found reference with the same content but different name.
+						// Drop reference name, use reflist template reference name as citation name
 						var citation = new refcon.Citation({
 							'group': reference.group,
-							'name': templateRef.name
+							'name': templateRef.name,
+							'index': reference.index,
+							'string': reference.string
 						});
-						reference.citation = citation;
-
+						templateRef.citations.push( citation );
+						createdCitations.push( citation );
 						// add names into replacements object, so we can replace all citation names that use the old name
 						refTemplate.replacements[ reference.name ] = templateRef.name;
-
 						continue;
 					}
 				}
-				
-				// If we get here, it means we've got a named reference that has not yet been described in reference template
-				// add the reference to template references
-				
+				// If we get here, it means we've got a named reference that has not yet been described in reflist template.
+				// Add the reference to reflist references
 				var newRef = new refcon.Reference({
 					'group': reference.group,
 					'name': reference.name,
 					'content': reference.content
 				});
-				refTemplate.addRef( newRef );
-
 				var citation = new refcon.Citation({
 					'group': reference.group,
-					'name': reference.name
+					'name': reference.name,
+					'index': reference.index,
+					'string': reference.string
 				});
-				reference.citation = citation;
+				newRef.citations.push( citation );
+				refTemplate.addRef( newRef );
+				createdCitations.push( citation );
 			}
 		}
-
+		// Now we go through unnamed references
 		for ( i = 0; i < textPart.references.length; i++ ) {
 			reference = textPart.references[ i ];
-			
+
 			refTemplateIx = textPart.inTemplates[ reference.group ];
 			refTemplate = refcon.refTemplates[ refTemplateIx ];
-		
-			// Now we go through unnamed references
+
 			if ( reference.content.length > 0 && reference.name.length === 0 ) {
-
 				templateRef = refcon.getRefByIndex( refTemplate, 'values', reference.content );
-
 				if ( typeof templateRef === 'object' ) {
 					if ( templateRef.content === reference.content ) {
 						// found reference with the same content
-
 						var citation = new refcon.Citation({
 							'group': reference.group,
-							'name': templateRef.name
+							'name': templateRef.name,
+							'index': reference.index,
+							'string': reference.string
 						});
-						reference.citation = citation;
-
+						templateRef.citations.push( citation );
+						createdCitations.push( citation );
 						continue;
 					}
 				}
 				// If we get here, we have a completely new unnamed reference
 				// add the reference to template references
-
 				var newName = refTemplate.getNewName();
-	
 				var newRef = new refcon.Reference({
 					'group': reference.group,
 					'name': newName,
 					'content': reference.content
 				});
-
-				refTemplate.addRef( newRef );
-
 				var citation = new refcon.Citation({
 					'group': reference.group,
-					'name': newName
+					'name': newName,
+					'index': reference.index,
+					'string': reference.string
 				});
-				reference.citation = citation;
+				newRef.citations.push( citation );
+				refTemplate.addRef( newRef );
+				createdCitations.push( citation );
 			}
 		}
+		textPart.linkedCitations = createdCitations;
 	},
-	
+
 	/**
-	 * Replace all references in TextPart object string with citations. Also replace citation names that were changed in previous steps
+	 * Link citations to their reflist template references
 	 *
 	 * @param {object} TextPart object
 	 *
 	 * @return {void}
-	 */	
-	
-	replaceTextPartRefs: function ( textPart ) {
-		var i, reference, citation, replaceString, refTemplateIx, refTemplate, replaceName, useTemplateR = false;
+	 */
+	linkCitations: function ( textPart ) {
 
-		// check if we should use template {{R}} for shorter citation format
-		useTemplateR = refcon.useConfigOption( refcon.getOption( 'usetemplateR' ), 'usetemplateR' );
-
-		for ( i = 0; i < textPart.references.length; i++ ) {
-			reference = textPart.references[ i ];
-
-			if ( typeof reference.citation === 'object' ) {
-				citation = reference.citation;
-
-				if ( typeof citation === 'object' && citation.name.length > 0 ) {
-					if ( useTemplateR === true )
-						replaceString = citation.toStringR();
-					else
-						replaceString = citation.toString();
-					textPart.string = textPart.string.replace( reference.string, replaceString );
-				}
-			}
-		}
+		var citation, refTemplateIx, refTemplate, replaceName, templateRef,
+			i;
 
 		for ( i = 0; i < textPart.citations.length; i++ ) {
 			citation = textPart.citations[ i ];
@@ -950,23 +1054,42 @@ var refcon = {
 					citation.name = replaceName;
 				}
 
-				if ( useTemplateR === true )
-					replaceString = citation.toStringR();
-				else
-					replaceString = citation.toString();
-				textPart.string = textPart.string.replace( citation.string, replaceString );
+				// For each citation try to find its reference
+				templateRef = refcon.getRefByIndex( refTemplate, 'keys', citation.name );
+				if ( typeof templateRef === 'object' ) {
+					if ( templateRef.name === citation.name ) {
+						templateRef.citations.push( citation );
+						textPart.linkedCitations.push( citation );
+					}
+				}
 			}
-		}		
+		}
 	},
-	
+
+	/**
+	 * Replace all references in TextPart object string with citations. Also replace citation names that were changed in previous steps
+	 *
+	 * @param {object} TextPart object
+	 *
+	 * @return {void}
+	 */
+	replaceTextPartRefs: function ( textPart ) {
+		var i, citation;
+		for ( i = 0; i < textPart.linkedCitations.length; i++ ) {
+			citation = textPart.linkedCitations[ i ];
+			if ( citation.name.length > 0 ) {
+				textPart.string = textPart.string.replace( citation.string, citation.toString() );
+			}
+		}
+	},
+
 	/**
 	 * Build reference templates
 	 *
 	 * @param {object} RefTemplate object
 	 *
 	 * @return {void}
-	 */	
-	
+	 */
 	buildRefTemplates: function ( refTemplate ) {
 		var i, reference, referencesString = '', refsAdded = false, sortRefs = false;
 
@@ -988,31 +1111,31 @@ var refcon = {
 			}
 		}
 		// Cut the last newline
-		referencesString = referencesString.substr( 0, referencesString.length - 1 );		
-		
+		referencesString = referencesString.substr( 0, referencesString.length - 1 );
+
 		var refTemplateNames = refcon.getOption( 'reftemplatenames' );
 
 		if ( Array.isArray( refTemplateNames ) ) {
 			var refTemplateName = refTemplateNames[0];
 		} else {
-			// call some error handling function and halt			
+			// call some error handling function and halt
 		}
-		
+
 		var refsNames = refcon.getOption( 'reftemplaterefsnames' );
 
 		if ( Array.isArray( refsNames ) ) {
 			var refsName = refsNames[0];
 		} else {
-			// call some error handling function and halt			
+			// call some error handling function and halt
 		}
-		
+
 		var templateString = '{{' + refTemplateName;
-		
+
 		// Build the references template string
 		if ( Object.keys( refTemplate.params ).length > 0 ) {
 			for ( var name in refTemplate.params ) {
 				var value = refTemplate.params[ name ];
-				
+
 				if ( refsNames.indexOf( name ) > -1 ) {
 					name = refsName;
 					value = "\n" + referencesString;
@@ -1021,14 +1144,14 @@ var refcon = {
 				templateString += '|' + name + '=' + value;
 			}
 		}
-		
+
 		if ( refsAdded === false ) {
 			templateString += '|' + refsName + "=\n" + referencesString;
 		}
 
 		templateString += "\n}}";
-		
-		refTemplate.string = templateString;		
+
+		refTemplate.string = templateString;
 	},
 
 	/**
@@ -1039,7 +1162,6 @@ var refcon = {
 	 *
 	 * @return {boolean} True of false
 	 */
-
 	useConfigOption: function ( configOptionValue, userConfigOptionName ) {
 		var result = false;
 		switch ( configOptionValue ) {
@@ -1057,32 +1179,32 @@ var refcon = {
 		  default:
 			result = false;
 		}
-		return ( result );	
-	},	
+		return ( result );
+	},
 
 	/**
 	 * Write text parts and reference templates into textbox variable
 	 *
 	 * @return {string} String that contains article text
-	 */	
-	
+	 */
+
 	writeTextBoxText: function () {
-		
+
 		var textBoxString = '';
 
 		for ( i = 0; i < refcon.textParts.length; i++ ) {
 			textPart = refcon.textParts[ i ];
-			
+
 			textBoxString += textPart.string;
-			
+
 			if ( typeof refcon.refTemplates[ i ] === 'object' ) {
 				textBoxString += refcon.refTemplates[ i ].string;
 			}
 		}
-		
-		return ( textBoxString );	
-	},	
-	
+
+		return ( textBoxString );
+	},
+
 	/**
 	 * Index into reference template template objects and return template object
 	 *
@@ -1091,10 +1213,10 @@ var refcon = {
 	 * @param {integer} key to index into
 	 *
 	 * @return {object} reference template object 
-	 */	
-	 	
+	 */
+	 
 	getRefByIndex: function ( refTemplate, dictname, key ) {
-		var templateRef;		
+		var templateRef;
 		var refDict = refTemplate[ dictname ];
 
 		if ( key in refDict && Array.isArray( refDict[ key ] ) ) {
@@ -1104,7 +1226,7 @@ var refcon = {
 
 		return ( templateRef );
 	},
-	
+
 	/**
 	 * Add the RefCon edit summary
 	 *
@@ -1122,8 +1244,18 @@ var refcon = {
 			return; // Don't add it twice
 		}
 		$( '#wpSummary' ).val( currentSummary ? currentSummary + summarySeparator + refconSummary : refconSummary );
-	},	
-	
+	},
+
+	/**
+	 * Set minor edit checkbox and click View Differences button
+	 *
+	 * @return {void}
+	 */
+	showDifferenceView: function () {
+		document.forms.editform.wpMinoredit.checked = true;
+		document.forms.editform.wpDiff.click();
+	},
+
 	/**
 	 * Produces random string with a given length
 	 *
@@ -1131,8 +1263,8 @@ var refcon = {
 	 * @param {string} charset (optional)
 	 *
 	 * @return {string} random string
-	 */	
-	
+	 */
+
 	randomString: function ( len, charSet ) {
 		charSet = charSet || 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 		var randomString = '';
@@ -1176,24 +1308,26 @@ var refcon = {
 		 * Article text content string
 		 */
 		this.string = data.string ? data.string : '';
-		
+
 		/**
 		 * Array that has indexes of reference templates that apply to this text part
 		 */
 		this.inTemplates = data.inTemplates ? data.inTemplates : {};
-		
+
 		/**
-		 * Reference objects array.
+		 * Temporary holding array for reference objects
 		 */
-		
 		this.references = [];
-		
+
 		/**
-		 * Citation objects array that have their reference defined outside text part (i.e. in other text part or references template)
+		 * Temporary holding array for citation objects
 		 */
-		
 		this.citations = [];
 
+		/**
+		 * Array that hold citation objects that are linked to reflist template references
+		 */
+		this.linkedCitations = [];
 	},
 
 
@@ -1204,12 +1338,12 @@ var refcon = {
 	 */
 
 	Citation: function (data) {
-	
+
 		/**
 		 * Citation group
 		 */
-		this.group = data.group ? data.group : '';	
-		
+		this.group = data.group ? data.group : '';
+
 		/**
 		 * Citation name
 		 */
@@ -1231,37 +1365,19 @@ var refcon = {
 		 * Convert this citation to wikitext
 		 */
 		this.toString = function () {
+			var useTemplateR = false;
+			// check if we should use template {{R}} for shorter citation format
+			useTemplateR = refcon.useConfigOption( refcon.getOption( 'usetemplateR' ), 'usetemplateR' );
 
-			var string = '<ref';
-			if ( this.name ) {
-				string += ' name="' + this.name + '"';
-			}
-			if ( this.group ) {
-				string += ' group="' + this.group + '"';
-			}
-			string += ' />';
+			var startString = useTemplateR ? '{{r' : '<ref';
+			var groupString = useTemplateR ? '|g=' + this.group : ' group="' + this.group + '"';
+			var nameString = useTemplateR ? '|' + this.name : ' name="' + this.name + '"';
+			var endString = useTemplateR ? '}}' : ' />';
 
-			return string;
-		};
-
-		/**
-		 * Convert this citation to wikitext using template {{R}} format (short citation format)
-		 */
-		this.toStringR = function () {
-
-			var string = '{{r';
-			if ( this.group ) {
-				string += '|g=' + this.group;
-			}
-			if ( this.name ) {
-				string += '|' + this.name;
-			}			
-			string += '}}';
-
-			return string;
+			return ( startString + ( this.group ? groupString : '' ) + ( this.name ? nameString : '' ) + endString );
 		};
 	},
-	
+
 	/**
 	 * Reference class
 	 *
@@ -1282,10 +1398,10 @@ var refcon = {
 		this.content = data.content ? data.content : '';
 
 		/**
-		 * Object that contains citation constructed to this reference
+		 * Array that contains citations to this reference
 		 */
-		this.citation = {};
-		
+		this.citations = [];
+
 		/**
 		 * Convert this reference to wikitext
 		 */
@@ -1293,51 +1409,61 @@ var refcon = {
 			var string = '<ref name="' + this.name + '">' + this.content + '</ref>';
 			return string;
 		};
+
+		/**
+		 * Change reference's name and it's citations' names
+		 */
+		this.changeName = function ( newName ) {
+			this.name = newName;
+			var i;
+			for ( i = 0; i < this.citations.length; i++ ) {
+				this.citations[ i ].name = newName;
+			}
+		};
 	},
-	
-	
+
 	/**
 	 * Reftemplate class
 	 *
 	 * @param {object} Data for constructing the object
-	 */	
+	 */
 	RefTemplate: function ( data ) {
-				
+
 		/**
 		 * Template group
 		 */
 		this.group = data.group ? data.group : '';
-		
+
 		/**
 		 * Template wikitext
 		 *
 		 */
 		this.string = data.string ? data.string : '';
-		
+
 		/**
 		 * Template start position in the edit textbox
 		 */
 		this.start = data.start ? data.start : 0;
-				
+
 		/**
 		 * Template end position in the edit textbox
 		 */
 		this.end = data.end ? data.end : 0;
-		
+
 		/**
 		 * Template parameters object that holds name-value pairs
-		 */				
+		 */
 		this.params = data.params ? data.params : {};
-		
+
 		/**
 		 * Array of reference objects of this template
 		 */
 		this.references = [];
-		
+
 		/**
 		 * Reference index dicts
-		 */		
-		
+		 */
+
 		this.keys = {};
 		this.values = {};
 		this.keyValues = {};
@@ -1345,17 +1471,17 @@ var refcon = {
 		/**
 		 * Helper dicts to keep track of duplicate reference keys, values key/values
 		 */
-		
+
 		this.dupKeys = {};
 		this.dupValues = {};
 		this.dupKeyValues = {};
-		
+
 		/**
 		 * Dict that holds citation name replacements
 		 */
-		
+
 		this.replacements = {};
-		
+
 		/**
 		 * Populate reference template's index dicts
 		 * @param {string} reference name
@@ -1368,18 +1494,18 @@ var refcon = {
 
 			if (key in this.keys) {
 				this.keys[key].push(ix);
-				this.dupKeys[key] = this.keys[key];		
+				this.dupKeys[key] = this.keys[key];
 			} else {
 				this.keys[key] = [ix];
 			}
-			
+
 			if (value in this.values) {
 				this.values[value].push(ix);
 				this.dupValues[value] = this.values[value];
 			} else {
 				this.values[value] = [ix];
-			}			
-			
+			}
+
 			if (key + '_' + value in this.keyValues) {
 				this.keyValues[key + '_' + value].push(ix);
 				this.dupKeyValues[key + '_' + value] = this.keyValues[key + '_' + value];
@@ -1387,22 +1513,22 @@ var refcon = {
 				this.keyValues[key + '_' + value] = [ix];
 			}
 		};
-		
+
 		/**
 		 * Process references indexes, remove duplicate 
 		 *
 		 * @return {void}
-		 */		
-		
-		this.processDuplicates = function () {			
+		 */
+
+		this.processDuplicates = function () {
 			this.processIndex( this.dupKeyValues, this.processDupKeyValues, this );
-			this.processIndex( this.dupKeys, this.processDupKeys, this );			
+			this.processIndex( this.dupKeys, this.processDupKeys, this );
 			this.processIndex( this.dupValues, this.processDupValues, this );
 		};
-		
+
 		this.processIndex = function ( indexObj, callBack, callbackObj ) {
 			// returnObj and dataObj are a bit of a hack for dupValues index. We need to get back the refIndex of the first duplicate value
-			// to add it into the replacements array with the duplicate values that were deleted			
+			// to add it into the replacements array with the duplicate values that were deleted
 			var returnObj, dataObj;
 			for (var key in indexObj) {
 				if (indexObj.hasOwnProperty(key)) {
@@ -1415,24 +1541,24 @@ var refcon = {
 				}
 			}
 		};
-		
+
 		this.processDupKeyValues = function ( refIndex, ix, dataObj ) {
 			if (ix > 0) {
 				var refData = this.delRef( refIndex );
 				this.changeEveryIndex( refData[ 'name' ], refData[ 'content' ], refIndex);
 			}
 		};
-		
+
 		this.processDupKeys = function ( refIndex, ix, dataObj ) {
 			if (ix > 0) {
-				var refData = this.changeRefName( refIndex );				
-				this.changeIndex( refData[ 'oldName' ], refIndex, this.keys );						
+				var refData = this.changeRefName( refIndex );
+				this.changeIndex( refData[ 'oldName' ], refIndex, this.keys );
 				this.addIndex( refData[ 'newName' ], refIndex, this.keys );
 				this.removeIndex( refData[ 'oldName' ] + '_' + refData[ 'content' ], this.keyValues );
-				this.addIndex( refData[ 'newName' ] + '_' + refData[ 'content' ], refIndex, this.keyValues );				
+				this.addIndex( refData[ 'newName' ] + '_' + refData[ 'content' ], refIndex, this.keyValues );
 			}
 		};
-		
+
 		this.processDupValues = function ( refIndex, ix, dataObj ) {
 			if (ix == 0) {
 				// get TemplateReference object
@@ -1447,7 +1573,7 @@ var refcon = {
 				this.replacements[delrefData['name']] = dataObj['name'];
 			}
 		};
-		
+
 		this.delRef = function ( refIndex ) {
 			var name = this.references[ refIndex ].name;
 			var content = this.references[ refIndex ].content;
@@ -1457,7 +1583,7 @@ var refcon = {
 				'content': content
 			});
 		};
-		
+
 		this.changeRefName = function ( refIndex ) {
 			var oldName = this.references[ refIndex ].name;
 			var content = this.references[ refIndex ].content;
@@ -1473,14 +1599,14 @@ var refcon = {
 		// Creates new reference name while making sure it is unique per template
 		this.getNewName = function ( oldName ) {
 			var prefix, randomValue, newName;
-			
+
 			randomValue = refcon.randomString( 5 );
 			prefix = typeof oldName !== 'undefined' ? oldName + '_' : '';
 			newName = prefix + randomValue;
 
 			while ( newName in this.keys ) {
 				randomValue = refcon.randomString( 5 );
-				newName = prefix + randomValue;				
+				newName = prefix + randomValue;
 			}
 			return ( newName );
 		}
@@ -1503,12 +1629,12 @@ var refcon = {
 		this.getRef = function ( refIndex ) {
 			return this.references[ refIndex ];
 		};
-		
+
 		this.addRef = function ( reference ) {
 			var count = this.references.push( reference );
-			this.createIndexes( reference['name'], reference['content'], count - 1 );			
+			this.createIndexes( reference['name'], reference['content'], count - 1 );
 		}
-		
+
 		this.delRef = function ( refIndex ) {
 			var name = this.references[ refIndex ].name;
 			var content = this.references[ refIndex ].content;
@@ -1518,7 +1644,7 @@ var refcon = {
 				'content': content
 			});
 		};
-		
+
 		this.changeEveryIndex = function ( key, value, refIndex ) {
 			this.changeIndex( key, refIndex, this.keys );
 			this.changeIndex( value, refIndex, this.values );

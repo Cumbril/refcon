@@ -36,7 +36,14 @@ $.when (
 				});
 				mw.messages.set({
 					'refcon-parsereferror': "See viitestring tekitas vea:\n$1",
-					'refcon-parserefforbidden': "Viite nimi sisaldab keelatud tähemärke [$1]:\n$2"
+					'refcon-parserefforbidden': "Viite nimi sisaldab keelatud tähemärke [$1]:\n$2",
+					'refcon-name': "Nimi",
+					'refcon-reference': "Viide",
+					'refcon-refstemplateno': "Viiteloendimall nr",
+					'refcon-referencegroup': "viiterühm",
+					'refcon-buttonabort': "Katkesta",
+					'refcon-buttoncontinue': "Edasi",
+					'refcon-referenceuses': "Kasutusi"
 				});
 				
 				mw.loader.load('https://localhost/RefConsolidate.css', 'text/css');
