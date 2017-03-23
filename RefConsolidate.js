@@ -239,15 +239,43 @@ var refcon = {
 	 */
 	showForm: function () {
 
-		var $container = $('<div id="refconContainer"></div>').addClass('refcon-container');
-		var $form = $('<form id="refconForm"></form>');
-		var $table = $('<table></table>').addClass('refcon');
-		$table.append('<tr><th></th><th>#</th><th>'+refcon.getMessage( 'name' )+'</th><th>'+refcon.getMessage( 'reference' )+'</th><th>'+refcon.getMessage( 'referenceuses' )+'</th></tr>');
+		// Define basic elements
+		var gui = $( '<div>' ).attr( 'id', 'refcon' ),
+			container = $( '<div>' ).attr( 'id', 'refcon-container' ),
+			header = $( '<div>' ).attr( 'id', 'refcon-header' ),
+			title = $( '<span>' ).attr( 'id', 'refcon-title' ).text( refcon.getOption( 'gadgetname' ) ),
+			closer = $( '<div>' ).attr( 'id', 'refcon-close' ).addClass( 'refcon-abort' ).html( '&times;' ).attr('title', refcon.getMessage( 'closetitle' )),
+			content = $( '<div>' ).attr( 'id', 'refcon-content' ),
+			form = $( '<form>' ).attr( 'id', 'refcon-form' ),
+			table = $( '<table>' ).attr( 'id', 'refcon-table' );
+
+		// Put everything together and add it to DOM
+		header.append( title, closer );
+		content.append( form ).append( table );
+		container.append( header, content );
+		gui.append( container );
+		$( 'body' ).prepend( gui );
+
+		// Make GUI draggable
+		container.draggable({
+			handle: header
+		});
+
+		// Set GUI width and height to 80% of user's window size (fallback is CSS-predefined values, if this fails)
+		var width = $(window).width();
+		var height = $(window).height();
+		if ( ( Number.isInteger( width ) && width > 0 ) && ( Number.isInteger( height ) && height > 0 ) ) {
+			content.css("width", Math.floor( width * 0.8 ));
+			content.css("height", Math.floor( height * 0.8 ));
+		}		
+		
+		// Build table and fill it with reference data
+		table.append('<tr><th></th><th>#</th><th>'+refcon.getMessage( 'name' )+'</th><th>'+refcon.getMessage( 'reference' )+'</th><th>'+refcon.getMessage( 'referenceuses' )+'</th></tr>');
 
 		var i;
 		for ( i = 0; i < refcon.refTemplates.length; i++ ) {
 			var refTemplate = refcon.refTemplates[ i ];
-			$table.append('<tr><td class="refcon-label" colspan="5" align="center">'
+			table.append('<tr><td class="refcon-templategroup" colspan="5" align="center">'
 							+ refcon.getMessage( 'refstemplateno' ) + ' ' + ( i + 1 )
 							+ (refcon.templateGroups[ i ].length > 0 ? ' (' + refcon.getMessage( 'referencegroup' ) + ': ' + refcon.templateGroups[ i ] + ')' : '')
 							+ '</td></tr>');
@@ -257,37 +285,39 @@ var refcon = {
 				if ( reference ) {
 					k++;
 					var cssClass = k % 2 == 0 ? 'refcon-even' : 'refcon-odd';
-					$table.append(
+					table.append(
 					'<tr>'
 					+ '<td class="' + cssClass + '"><img src="' + refcon.getOption( 'image-yes' ) + '"></td>'
 					+ '<td class="' + cssClass + '" align="center">' + k + '</td>'
 					+ '<td class="' + cssClass + '"><input type="text" template_id="' + i + '" name="' + j + '" value="' + reference.name + '"></td>'
-					+ '<td class="' + cssClass + '">' + reference.content + '</td>'
+					+ '<td class="' + cssClass + ' refcontent">' + reference.content + '</td>'
 					+ '<td class="' + cssClass + '" align="center">' + reference.citations.length + '</td>'
 					+ '</tr>');
 				}
 			}
 		}
-		$table.append('<tr><td colspan="4" align="center"><button type="button" id="abort">'
-						+ refcon.getMessage( 'buttonabort' )+'</button><button type="button" id="continue">'
+		table.append('<tr><td colspan="5" align="center"><button type="button" id="refcon-abort-button" class="refcon-abort">'
+						+ refcon.getMessage( 'buttonabort' )+'</button><button type="button" id="refcon-continue-button">'
 						+ refcon.getMessage( 'buttoncontinue' )+'</button></td></tr>');
-		$container.append( $form.append( $table ) ).appendTo('body');
-
-		$table.find('input').on('input', function() {
-			$table.find('#continue').removeAttr('disabled');
-		});
-
-		$table.find('#abort').on('click', function() {
-			$container.remove();
+						
+		container.css( 'display', 'block' );
+		
+		// Bind events
+		$( '.refcon-abort' ).on( 'click', function() {
+			gui.remove();
 			refcon.cleanUp();
 		});
 
-		$table.find('#continue').on('click', function( event ) {
+		$( '#refcon-table input' ).on( 'input', function() {
+			$( '#refcon-continue-button' ).removeAttr( 'disabled' );
+		});
+
+		$( '#refcon-continue-button' ).on( 'click', function( event ) {
 			refcon.validateInput();
-			if ( $table.find('[data-invalid]').length === 0 ) {
+			if ( table.find('[data-invalid]').length === 0 ) {
 				refcon.changeReferenceData();
 			} else {
-				$table.find('#continue').attr('disabled', true);
+				$( '#refcon-continue-button' ).attr('disabled', true);
 			}
 		});
 	},
@@ -300,7 +330,7 @@ var refcon = {
 			duplicateNames[ i ] = {};
 		}
 
-		$('#refconForm input').each(function() {
+		$( '#refcon-table input' ).each(function() {
 			if ( $(this).val() in names[ $(this).attr('template_id') ] ) {
 				duplicateNames[ $(this).attr('template_id') ][ $(this).val() ] = 1;
 			} else {
@@ -308,12 +338,12 @@ var refcon = {
 			}
 		});
 
-		$('#refconForm input').each(function() {
+		$( '#refcon-table input' ).each(function() {
 			if ( $(this).val() in duplicateNames[ $(this).attr('template_id') ] ) {
 				refcon.markFieldAsInvalid( $(this) );
 			} else if ( $(this).val() === '' ) {
 				refcon.markFieldAsInvalid( $(this) );
-			} else if ( $(this).val().match(/[<"]/) !== null ) {
+			} else if ( $(this).val().match(/[<>"]/) !== null ) {
 				refcon.markFieldAsInvalid( $(this) );
 			} else {
 				refcon.markFieldAsValid( $(this) );
@@ -323,19 +353,19 @@ var refcon = {
 
 	markFieldAsValid: function ( inputField ) {
 		$( inputField ).removeAttr( 'data-invalid' );
-		$( inputField ).closest('tr').find('img').attr('src', refcon.getOption( 'image-yes' ));
+		$( inputField ).closest( 'tr' ).find( 'img' ).attr( 'src', refcon.getOption( 'image-yes' ));
 	},
 
 	markFieldAsInvalid: function ( inputField ) {
-		$( inputField ).attr('data-invalid', 1);
-		$( inputField ).closest('tr').find('img').attr('src', refcon.getOption( 'image-no' ));
+		$( inputField ).attr( 'data-invalid', 1 );
+		$( inputField ).closest( 'tr' ).find( 'img' ).attr( 'src', refcon.getOption( 'image-no' ));
 	},
 
 	changeReferenceData: function () {
-		$('#refconForm input').each(function() {
+		$( '#refcon-table input' ).each(function() {
 			var name = $(this).val();
-			var templateId = $(this).attr('template_id');
-			var refId = $(this).attr('name');
+			var templateId = $(this).attr( 'template_id' );
+			var refId = $(this).attr( 'name' );
 			refcon.refTemplates[ templateId ].references[ refId ].changeName( name );
 		});
 		refcon.commit();
@@ -660,7 +690,7 @@ var refcon = {
 		if ( typeof referenceName === 'undefined' )
 			referenceName = '';
 
-		var found = referenceName.match(/[<"]/);
+		var found = referenceName.match(/[<>"]/);
 		if ( found !== null ) {
 			refcon.throwReferenceError( referenceString, refcon.getMessage( 'parserefforbidden', [ found[0], referenceString ] ));
 		}

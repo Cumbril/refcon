@@ -1,7 +1,7 @@
 ﻿// Make sure the document is ready and dependencies are loaded
 $.when (
 	$.ready,
-	mw.loader.using(['mediawiki.util'])
+	mw.loader.using(['mediawiki.util', 'jquery.ui.draggable'])
 	).done(function () {
 		// Only load on appropriate namespaces
 		var namespace = mw.config.get( 'wgNamespaceNumber' );
@@ -11,6 +11,7 @@ $.when (
 			if ( contentModel === 'wikitext' ) {				
 				// Configure the gadget for this particular wiki
 				mw.config.set({
+					'refcon-gadgetname': 'Viidete koondaja',
 					'refcon-summary': 'Koondasin skripti abil viited', // Edit summary automatically added by ProveIt
 					'refcon-summaryseparator': ' + ', // Edit summary separator if summary is added to existing summary
 					'refcon-linkname': 'V-koonda', //Portlet link name
@@ -43,7 +44,8 @@ $.when (
 					'refcon-referencegroup': "viiterühm",
 					'refcon-buttonabort': "Katkesta",
 					'refcon-buttoncontinue': "Edasi",
-					'refcon-referenceuses': "Kasutusi"
+					'refcon-referenceuses': "Kasutusi",
+					'refcon-closetitle': "Sule aken"
 				});
 				
 				mw.loader.load('https://localhost/RefConsolidate.css', 'text/css');

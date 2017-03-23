@@ -1,10 +1,117 @@
-﻿.refcon {border-collapse:collapse;border-spacing:0;border-color:#aaa;border:none;}
-.refcon table{width: 100%;}
-.refcon td{font-family:Arial, sans-serif;font-size:14px;padding:10px 5px;border-style:solid;border-width:0px;overflow:hidden;word-break:normal;border-color:#aaa;color:#333;background-color:#fff;}
-.refcon th{font-family:Arial, sans-serif;font-size:14px;font-weight:bold;padding:10px 5px;border-style:solid;border-width:0px;overflow:hidden;word-break:normal;border-color:#aaa;color:#fff;background-color:#f38630;}
-.refcon .refcon-odd{background-color:#FCFBE3;vertical-align:top;}
-.refcon .refcon-even{vertical-align:top;}
-.refcon .refcon-label{font-weight:bold;}
-.refcon img{height: 15px;}
-.refcon button{margin: 0px 15px;}
-.refcon-container{position:fixed;top:5%;left:10%;width:80%;height:90%;box-sizing:border-box;box-shadow:0 0 30px #808080;padding:1em;background-color:white;overflow:auto;z-index:1000;}
+﻿#refcon {
+	display: flex;
+	justify-content: center;
+}
+
+#refcon-container {
+	display: none;
+	position: fixed;
+	z-index: 1000;
+	box-sizing: border-box;
+	box-shadow: 0 0 30px #808080;
+	border: 1px solid #898f99;
+	margin: auto;
+	background: #ffffff;
+}
+
+#refcon-header {
+	background: #898f99;
+    margin: auto;
+	width: 100%;
+	overflow: hidden;	
+	text-align: center;
+	vertical-align: middle;
+	line-height: 20px;
+	cursor: default;
+}
+
+#refcon-content {
+    margin: auto;
+	overflow: auto;
+	width: 800px;
+	height: 600px;
+	resize: both;
+}
+
+#refcon-close {
+    color: #ffffff;
+    float: right;
+    font-size: 20px;
+    font-weight: bold;
+	padding-right: 5px;
+}
+
+#refcon-close:hover,
+#refcon-close:focus {
+    color: #000;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+#refcon-title {
+    color: #ffffff;	
+	font-family: Arial, sans-serif;
+    font-size: 15px;
+    font-weight: bold;
+	cursor: inherit;
+}
+
+#refcon-table {
+	border-collapse: collapse;
+	border-spacing: 0;
+	border-color: #aaa;
+	border: none;
+}
+
+#refcon-table td {
+	font-family: Arial, sans-serif;
+	font-size: 14px;
+	padding: 10px 5px;
+	border-style: solid;
+	border-width: 0px;
+	overflow: hidden;
+	word-break: normal;
+	border-color: #aaa;
+	color: #333;
+}
+
+#refcon-table th {
+	font-family: Arial, sans-serif;
+	font-size: 14px;
+	font-weight: bold;
+	padding: 7px 5px;
+	border-style: solid;
+	border-width: 0px;
+	overflow: hidden;
+	word-break: normal;
+	border-color: #aaa;
+	color: #fff;
+	background-color: #f38630;
+}
+
+#refcon-table .refcontent {
+	/*word-break: break-all;*/
+	/*word-wrap: break-word;*/
+}
+
+#refcon-table img {
+	height: 15px;
+	margin-left: 3px;
+}
+
+#refcon-table button {
+	margin: 0 15px;
+}
+
+.refcon-odd {
+	background-color: #FCFBE3;
+	vertical-align: top;
+}
+
+.refcon-even {
+	vertical-align: top;
+}
+
+.refcon-templategroup {
+	font-weight: bold;
+}
