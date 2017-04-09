@@ -1264,21 +1264,22 @@ var refcon = {
 	 * @return {void}
 	 */
 	sortReferences: function ( refTemplate ) {
-		refTemplate.references.sort( function( a,b ) {
-			// order by reference name
-			if ( refcon.sort.column === 2 ) {
-				return refcon.sort.order === 'asc' ? a.name.localeCompare( b.name, mw.config.get( 'wgContentLanguage' ) ) : b.name.localeCompare( a.name, mw.config.get( 'wgContentLanguage' ) );
-			// order by reference content
-			} else if ( refcon.sort.column === 3 ) {
-				return refcon.sort.order === 'asc' ? a.content.localeCompare( b.content, mw.config.get( 'wgContentLanguage' ) ) : b.content.localeCompare( a.content, mw.config.get( 'wgContentLanguage' ) );
-			// order by citations count
-			} else if ( refcon.sort.column === 4 ) {
-				return refcon.sort.order === 'asc' ? a.citations.length - b.citations.length : b.citations.length - a.citations.length;
-			}
-		});
-		// reverse default sort
-		if ( refcon.sort.column === 1 && refcon.sort.order === 'desc' ) {
-			refTemplate.references = refTemplate.references.reverse();
+
+		if ( refcon.sort.column === 1 ) {
+			refTemplate.references = refcon.sort.order === 'desc' ? refTemplate.references.reverse() : refTemplate.references;
+		} else {
+			refTemplate.references.sort( function( a,b ) {
+				// order by reference name
+				if ( refcon.sort.column === 2 ) {
+					return refcon.sort.order === 'asc' ? a.name.localeCompare( b.name, mw.config.get( 'wgContentLanguage' ) ) : b.name.localeCompare( a.name, mw.config.get( 'wgContentLanguage' ) );
+				// order by reference content
+				} else if ( refcon.sort.column === 3 ) {
+					return refcon.sort.order === 'asc' ? a.content.localeCompare( b.content, mw.config.get( 'wgContentLanguage' ) ) : b.content.localeCompare( a.content, mw.config.get( 'wgContentLanguage' ) );
+				// order by citations count
+				} else if ( refcon.sort.column === 4 ) {
+					return refcon.sort.order === 'asc' ? a.citations.length - b.citations.length : b.citations.length - a.citations.length;
+				}
+			});
 		}
 	},
 
