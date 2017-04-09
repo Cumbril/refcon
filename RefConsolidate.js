@@ -49,6 +49,14 @@ var refcon = {
 	textParts: [],
 
 	/**
+	 * Object for user selectable sort options
+	 *
+	 * @type {object}
+	 */
+
+	sort: {},
+
+	/**
 	 * Convenience method to get a RefCon option
 	 *
 	 * @param {string} option key without the "refcon-" prefix
@@ -267,15 +275,21 @@ var refcon = {
 		if ( ( Number.isInteger( width ) && width > 0 ) && ( Number.isInteger( height ) && height > 0 ) ) {
 			content.css("width", Math.floor( width * 0.8 ));
 			content.css("height", Math.floor( height * 0.8 ));
-		}		
-		
+		}
+
 		// Build table and fill it with reference data
-		table.append('<tr><th></th><th>#</th><th>'+refcon.getMessage( 'name' )+'</th><th>'+refcon.getMessage( 'reference' )+'</th><th>'+refcon.getMessage( 'referenceuses' )+'</th></tr>');
+		table.append('<tr>\
+					<th></th>\
+					<th class="refcon-sortable refcon-asc"><span>#</span></th>\
+					<th class="refcon-sortable"><span>'+refcon.getMessage( 'name' )+'</span></th>\
+					<th class="refcon-sortable"><span>'+refcon.getMessage( 'reference' )+'</span></th>\
+					<th class="refcon-sortable"><span>'+refcon.getMessage( 'referenceuses' )+'</span></th>\
+					</tr>');
 
 		var i;
 		for ( i = 0; i < refcon.refTemplates.length; i++ ) {
 			var refTemplate = refcon.refTemplates[ i ];
-			table.append('<tr><td class="refcon-templategroup" colspan="5" align="center">'
+			table.append('<tr id="templateheader'+i+'"><td class="refcon-templategroup" colspan="5" align="center">'
 							+ refcon.getMessage( 'refstemplateno' ) + ' ' + ( i + 1 )
 							+ (refcon.templateGroups[ i ].length > 0 ? ' (' + refcon.getMessage( 'referencegroup' ) + ': ' + refcon.templateGroups[ i ] + ')' : '')
 							+ '</td></tr>');
@@ -286,39 +300,85 @@ var refcon = {
 					k++;
 					var cssClass = k % 2 == 0 ? 'refcon-even' : 'refcon-odd';
 					table.append(
-					'<tr>'
+					'<tr template="' + i + '">'
 					+ '<td class="' + cssClass + '"><img src="' + refcon.getOption( 'image-yes' ) + '"></td>'
 					+ '<td class="' + cssClass + '" align="center">' + k + '</td>'
-					+ '<td class="' + cssClass + '"><input type="text" template_id="' + i + '" name="' + j + '" value="' + reference.name + '"></td>'
+					+ '<td class="' + cssClass + '"><input class="refcon-refname" type="text" template_id="' + i + '" name="' + j + '" value="' + reference.name + '"></td>'
 					+ '<td class="' + cssClass + ' refcontent">' + reference.content + '</td>'
 					+ '<td class="' + cssClass + '" align="center">' + reference.citations.length + '</td>'
 					+ '</tr>');
 				}
 			}
 		}
-		table.append('<tr><td colspan="5" align="center"><button type="button" id="refcon-abort-button" class="refcon-abort">'
+		table.append('<tr id="refcon-options"><td colspan="5" align="center"><input type="checkbox" id="refcon-savesorted" name="sort" value="yes">'
+						+ ' ' + refcon.getMessage( 'checkboxsortorder' ) + '</td></tr>');
+		table.append('<tr id="refcon-buttons"><td colspan="5" align="center"><button type="button" id="refcon-abort-button" class="refcon-abort">'
 						+ refcon.getMessage( 'buttonabort' )+'</button><button type="button" id="refcon-continue-button">'
 						+ refcon.getMessage( 'buttoncontinue' )+'</button></td></tr>');
-						
+
 		container.css( 'display', 'block' );
-		
+
 		// Bind events
 		$( '.refcon-abort' ).on( 'click', function() {
 			gui.remove();
 			refcon.cleanUp();
 		});
 
-		$( '#refcon-table input' ).on( 'input', function() {
+		$( '#refcon-table .refcon-refname' ).on( 'input', function() {
 			$( '#refcon-continue-button' ).removeAttr( 'disabled' );
 		});
 
 		$( '#refcon-continue-button' ).on( 'click', function( event ) {
 			refcon.validateInput();
 			if ( table.find('[data-invalid]').length === 0 ) {
-				refcon.changeReferenceData();
+				refcon.afterScreenSave();
 			} else {
 				$( '#refcon-continue-button' ).attr('disabled', true);
 			}
+		});
+
+		$( ".refcon-sortable" ).on('click', function() {
+			refcon.sortTable( $(this) );
+		});
+	},
+
+	sortTable: function ( columnHeader ) {
+		var order = $( columnHeader ).hasClass('refcon-asc') ? 'refcon-desc' : 'refcon-asc';
+		$('.refcon-sortable').removeClass('refcon-asc').removeClass('refcon-desc');
+		$( columnHeader ).addClass( order );
+
+		var colIndex = $( columnHeader ).prevAll().length;
+		var tbod = $( columnHeader ).closest("table").find("tbody");
+
+		var i;
+		for ( i = 0; i < refcon.templateGroups.length; i++ ) {
+			var rows = $( tbod ).children("tr[template='" + i + "']");
+			rows.sort( function( a,b ) {
+				var A = $(a).children("td").eq(colIndex).has("input").length ? $(a).children("td").eq(colIndex).children("input").val() : $(a).children("td").eq(colIndex).text();
+				var B = $(b).children("td").eq(colIndex).has("input").length ? $(b).children("td").eq(colIndex).children("input").val() : $(b).children("td").eq(colIndex).text();
+
+				if ( colIndex === 1 || colIndex === 4 ) {
+					A = Number(A);
+					B = Number(B);
+					return order === 'refcon-asc' ? A - B : B - A;
+				} else {
+					if ( order === 'refcon-asc' ) {
+						return A.localeCompare( B, mw.config.get( 'wgContentLanguage' ) );
+					} else {
+						return B.localeCompare( A, mw.config.get( 'wgContentLanguage' ) );
+					}
+				}
+			});
+			$( rows ).each( function( index ) {
+				$( this ).children("td").removeClass('refcon-even').removeClass('refcon-odd');
+				$( this ).children("td").addClass( index % 2 == 0 ? 'refcon-odd' : 'refcon-even' );
+			});
+
+			$( columnHeader ).closest("table").find("tbody").children("tr[template='" + i + "']").remove();
+			$( columnHeader ).closest("table").find("#templateheader"+i).after( rows );
+		}
+		$( '#refcon-table .refcon-refname' ).on( 'input', function() {
+			$( '#refcon-continue-button' ).removeAttr( 'disabled' );
 		});
 	},
 
@@ -330,7 +390,7 @@ var refcon = {
 			duplicateNames[ i ] = {};
 		}
 
-		$( '#refcon-table input' ).each(function() {
+		$( '#refcon-table .refcon-refname' ).each(function() {
 			if ( $(this).val() in names[ $(this).attr('template_id') ] ) {
 				duplicateNames[ $(this).attr('template_id') ][ $(this).val() ] = 1;
 			} else {
@@ -338,7 +398,7 @@ var refcon = {
 			}
 		});
 
-		$( '#refcon-table input' ).each(function() {
+		$( '#refcon-table .refcon-refname' ).each(function() {
 			if ( $(this).val() in duplicateNames[ $(this).attr('template_id') ] ) {
 				refcon.markFieldAsInvalid( $(this) );
 			} else if ( $(this).val() === '' ) {
@@ -361,13 +421,30 @@ var refcon = {
 		$( inputField ).closest( 'tr' ).find( 'img' ).attr( 'src', refcon.getOption( 'image-no' ));
 	},
 
-	changeReferenceData: function () {
-		$( '#refcon-table input' ).each(function() {
+	/**
+	 * Process form after the Save button was pressed
+	 *
+	 * @return {void}
+	 */
+
+	afterScreenSave: function () {
+		// Take reference names from the form and save them (in case something was changed)
+		$( '#refcon-table .refcon-refname' ).each(function() {
 			var name = $(this).val();
 			var templateId = $(this).attr( 'template_id' );
 			var refId = $(this).attr( 'name' );
 			refcon.refTemplates[ templateId ].references[ refId ].changeName( name );
 		});
+		// If user has checked "save sorted" checkbox, save sorting preferences for later
+		if ( $('#refcon-savesorted').prop('checked') ) {
+			if ( $( '.refcon-asc' ).prevAll().length ) {
+				refcon.sort['column'] = $( '.refcon-asc' ).prevAll().length;
+				refcon.sort['order'] = 'asc';
+			} else if ( $( '.refcon-desc' ).prevAll().length ) {
+				refcon.sort['column'] = $( '.refcon-desc' ).prevAll().length;
+				refcon.sort['order'] = 'desc';
+			}
+		}
 		refcon.commit();
 	},
 
@@ -1121,19 +1198,14 @@ var refcon = {
 	 * @return {void}
 	 */
 	buildRefTemplates: function ( refTemplate ) {
-		var i, reference, referencesString = '', refsAdded = false, sortRefs = false;
+		var i, reference, referencesString = '', refsAdded = false;
 
-		// sort references depending on config and user config settings
-		sortRefs = refcon.useConfigOption( refcon.getOption( 'sortrefs' ), 'sort' );
-
-		if ( sortRefs === true ) {
-			var contentLanguage = mw.config.get( 'wgContentLanguage' );
-
-			refTemplate.references.sort( function( a,b ) {
-				return a.name.localeCompare( b.name, contentLanguage);
-			});
+		// sort references if user has checked the checkbox
+		if ( Object.keys( refcon.sort ).length > 0 ) {
+			refcon.sortReferences ( refTemplate );
 		}
 
+		// turn reference data into reflist parameter value string
 		for ( i = 0; i < refTemplate.references.length; i++ ) {
 			reference = refTemplate.references[ i ];
 			if ( reference ) {
@@ -1185,9 +1257,35 @@ var refcon = {
 	},
 
 	/**
-	 * Verify if configuration option should be used. Return true or false
+	 * Sort references inside reflist template according to user preferences
 	 *
+	 * @param {object} Reftemplate object
+	 *
+	 * @return {void}
+	 */
+	sortReferences: function ( refTemplate ) {
+		refTemplate.references.sort( function( a,b ) {
+			// order by reference name
+			if ( refcon.sort.column === 2 ) {
+				return refcon.sort.order === 'asc' ? a.name.localeCompare( b.name, mw.config.get( 'wgContentLanguage' ) ) : b.name.localeCompare( a.name, mw.config.get( 'wgContentLanguage' ) );
+			// order by reference content
+			} else if ( refcon.sort.column === 3 ) {
+				return refcon.sort.order === 'asc' ? a.content.localeCompare( b.content, mw.config.get( 'wgContentLanguage' ) ) : b.content.localeCompare( a.content, mw.config.get( 'wgContentLanguage' ) );
+			// order by citations count
+			} else if ( refcon.sort.column === 4 ) {
+				return refcon.sort.order === 'asc' ? a.citations.length - b.citations.length : b.citations.length - a.citations.length;
+			}
+		});
+		// reverse default sort
+		if ( refcon.sort.column === 1 && refcon.sort.order === 'desc' ) {
+			refTemplate.references = refTemplate.references.reverse();
+		}
+	},
+
+	/**
+	 * Verify if configuration option should be used. Return true or false
 	 * @param {string} Refcon option as returned by refcon.getOption method
+
 	 * @param {string} User configuration variable content
 	 *
 	 * @return {boolean} True of false
@@ -1687,3 +1785,4 @@ var refcon = {
 $( refcon.init );
 
 }( mw, jQuery ) );
+	

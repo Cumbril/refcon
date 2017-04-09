@@ -11,7 +11,7 @@ $.when (
 			if ( contentModel === 'wikitext' ) {				
 				// Configure the gadget for this particular wiki
 				mw.config.set({
-					'refcon-gadgetname': 'Viidete koondaja',
+					'refcon-gadgetname': 'Viidete koondaja',  //Gadget name
 					'refcon-summary': 'Koondasin skripti abil viited', // Edit summary automatically added by ProveIt
 					'refcon-summaryseparator': ' + ', // Edit summary separator if summary is added to existing summary
 					'refcon-linkname': 'V-koonda', //Portlet link name
@@ -45,7 +45,8 @@ $.when (
 					'refcon-buttonabort': "Katkesta",
 					'refcon-buttoncontinue': "Edasi",
 					'refcon-referenceuses': "Kasutusi",
-					'refcon-closetitle': "Sule aken"
+					'refcon-closetitle': "Sule aken",
+					'refcon-checkboxsortorder': "Salvesta valitud sortimisjärjestuses"
 				});
 				
 				mw.loader.load('https://localhost/RefConsolidate.css', 'text/css');

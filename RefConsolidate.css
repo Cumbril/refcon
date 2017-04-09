@@ -89,6 +89,12 @@
 	background-color: #f38630;
 }
 
+#refcon-table th span:hover,
+#refcon-table th span:focus {
+    text-decoration: underline;
+    cursor: pointer;
+}
+
 #refcon-table .refcontent {
 	/*word-break: break-all;*/
 	/*word-wrap: break-word;*/
