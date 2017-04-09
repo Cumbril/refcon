@@ -58,7 +58,8 @@ $.when (
 					'refcon-buttonabort': "Abort",
 					'refcon-buttoncontinue': "Continue",
 					'refcon-referenceuses': "Uses",
-					'refcon-closetitle': "Close window"
+					'refcon-closetitle': "Close window",
+					'refcon-checkboxsortorder': "Save in selected sorting order"
 				});
 				mw.loader.load( '/w/index.php?title=User:Cumbril/RefConsolidate.css&action=raw&ctype=text/css', 'text/css' );
 				// cache loaded scripts for faster loading
