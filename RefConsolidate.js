@@ -1,10 +1,13 @@
 ﻿/**
- * RefCon (References Consolidator) is a Wikipedia gadget that converts all references in an article to list-defined format.
- * It supports multiple reference templates and reference group names.
+ * RefCon (References Consolidator) is a Wikipedia gadget for organizing references in articles. With RefCon,
+ * you can easily move all references into reference list template, or vice versa. You can select which references
+ * to move based on citation count, or select references individually. The gadget detects all article's references 
+ * and lists them in a table, where you can see their current location (in reference list template or in article text),
+ * sort references in various ways, and rename them.
  * 
  * Copyright 2016–2017 Cumbril
  *
- * Parts of RefCon are derived from Wikipedia gadget ProveIt:
+ * Some parts of RefCon are derived from Wikipedia gadget ProveIt. Credit for these parts goes to:
  * Copyright 2008-2011 Georgia Tech Research Corporation, Atlanta, GA 30332-0415, ALL RIGHTS RESERVED
  * Copyright 2011- Matthew Flaschen
  * Rewritten, internationalized, enhanced and maintained by Felipe Schenone since 2014
@@ -219,6 +222,12 @@ var refcon = {
 	 * @return {void}
 	 */
 	commit: function () {
+
+			// Recreate indexes (because names could have been changed in the form)
+			for ( i = 0; i < refcon.refTemplates.length; i++ ) {
+				refcon.refTemplates[ i ].reIndex();
+			}
+
 			// Replace references inside text part strings with citations
 			for ( i = 0; i < refcon.textParts.length; i++ ) {
 				refcon.replaceTextPartRefs( refcon.textParts[ i ] );
@@ -284,6 +293,7 @@ var refcon = {
 					<th class="refcon-sortable"><span>'+refcon.getMessage( 'name' )+'</span></th>\
 					<th class="refcon-sortable"><span>'+refcon.getMessage( 'reference' )+'</span></th>\
 					<th class="refcon-sortable"><span>'+refcon.getMessage( 'referenceuses' )+'</span></th>\
+					<th></th>\
 					</tr>');
 
 		var i;
@@ -306,28 +316,37 @@ var refcon = {
 					+ '<td class="' + cssClass + '"><input class="refcon-refname" type="text" template_id="' + i + '" name="' + j + '" value="' + reference.name + '"></td>'
 					+ '<td class="' + cssClass + ' refcontent">' + reference.content + '</td>'
 					+ '<td class="' + cssClass + '" align="center">' + reference.citations.length + '</td>'
+					+ '<td class="' + cssClass + '"><input class="refcon-refplace" type="checkbox" name="' + j + '" value="' + reference.citations.length + '"' + ( reference.inRefTemplate === true ? 'checked' : '' ) + '></td>'
 					+ '</tr>');
 				}
 			}
 		}
-		table.append('<tr id="refcon-options"><td colspan="5" align="center"><input type="checkbox" id="refcon-savesorted" name="sort" value="yes">'
-						+ ' ' + refcon.getMessage( 'checkboxsortorder' ) + '</td></tr>');
+		table.append('<tr><td colspan="5"><table id="refcon-table-options">\
+					<tr><td><span class="refcon-option-header">' + refcon.getMessage( 'optionsheaderreflocation' ) + '</span></td><td width="20"></td><td><span class="refcon-option-header">' + refcon.getMessage( 'optionsheadersortorder' ) + '</span></td></tr>\
+					<tr><td><span class="refcon-option-point"><input class="refcon-refplacement" type="radio" name="reference-place" value="template"> ' + refcon.getMessage( 'optionlocation1' ) + '</span></td><td width="20"></td><td><span class="refcon-option-point"><input type="checkbox" id="refcon-savesorted" name="sort" value="yes">'+ refcon.getMessage( 'checkboxsortorder' ) +'</span></td></tr>\
+					<tr><td><span class="refcon-option-point"><input class="refcon-refplacement" type="radio" name="reference-place" value="text"> ' + refcon.getMessage( 'optionlocation2' ) + '</span></td><td width="20"></td><td></td></tr>\
+					<tr><td><span class="refcon-option-point"><input class="refcon-refplacement" type="radio" name="reference-place" value="usage"> ' + refcon.getMessage( 'optionlocation3', [ '<input id="refcon-table-options-uses" type="text" name="min_uses" size="2" value="2">' ]) + '</span></td><td width="20"></td><td></td></tr>\
+					</table></td></tr>');
 		table.append('<tr id="refcon-buttons"><td colspan="5" align="center"><button type="button" id="refcon-abort-button" class="refcon-abort">'
-						+ refcon.getMessage( 'buttonabort' )+'</button><button type="button" id="refcon-continue-button">'
-						+ refcon.getMessage( 'buttoncontinue' )+'</button></td></tr>');
+						+ refcon.getMessage( 'buttonabort' ) + '</button><button type="button" id="refcon-continue-button">'
+						+ refcon.getMessage( 'buttoncontinue' ) + '</button></td></tr>');
 
 		container.css( 'display', 'block' );
 
 		// Bind events
+
+		// Close window when user clicks on 'x'
 		$( '.refcon-abort' ).on( 'click', function() {
 			gui.remove();
 			refcon.cleanUp();
 		});
 
+		// Activate 'Continue' button when user changes some reference name
 		$( '#refcon-table .refcon-refname' ).on( 'input', function() {
 			$( '#refcon-continue-button' ).removeAttr( 'disabled' );
 		});
 
+		// Validate reference names when user clicks 'Continue'. If there are errors, disable 'Continue' button
 		$( '#refcon-continue-button' ).on( 'click', function( event ) {
 			refcon.validateInput();
 			if ( table.find('[data-invalid]').length === 0 ) {
@@ -337,9 +356,33 @@ var refcon = {
 			}
 		});
 
+		// Sort table if user clicks on sortable table header
 		$( ".refcon-sortable" ).on('click', function() {
 			refcon.sortTable( $(this) );
 		});
+
+		$( "#refcon-table .refcon-refplacement" ).on( 'change', function() {
+			switch( $( this ).val() ) {
+				case 'template':
+					$( '#refcon-table .refcon-refplace' ).prop('checked', true);
+					break;
+				case 'text':
+					$( '#refcon-table .refcon-refplace' ).prop('checked', false);
+					break;
+				case 'usage':
+					refcon.selectReferencesByUsage();
+					break;
+			}
+		});
+		// When user clicks on uses input field, select the third radio checkbox
+		$( "#refcon-table-options-uses" ).on( 'focus', function() {
+			$('#refcon-table-options input:radio[name=reference-place]:nth(2)').trigger( "click" );
+		});
+
+		$( "#refcon-table-options-uses" ).on( 'input', function() {
+			refcon.selectReferencesByUsage();
+		});
+
 	},
 
 	sortTable: function ( columnHeader ) {
@@ -377,9 +420,27 @@ var refcon = {
 			$( columnHeader ).closest("table").find("tbody").children("tr[template='" + i + "']").remove();
 			$( columnHeader ).closest("table").find("#templateheader"+i).after( rows );
 		}
+
+		// Activate 'Continue' button when user changes some reference name
 		$( '#refcon-table .refcon-refname' ).on( 'input', function() {
 			$( '#refcon-continue-button' ).removeAttr( 'disabled' );
 		});
+	},
+
+	selectReferencesByUsage: function () {
+		var usage = $( "#refcon-table-options-uses" ).val();
+		if ( usage.length > 0 ) {
+			var regex = /[^0-9]+/;
+			if ( !usage.match( regex ) ) {
+				usage = Number( usage );
+				$( '#refcon-table .refcon-refplace' ).each(function() {
+					if ( $(this).attr('value') >= usage )
+						$(this).prop('checked', true);
+					else
+						$(this).prop('checked', false);
+				});
+			}
+		}
 	},
 
 	validateInput: function () {
@@ -428,13 +489,18 @@ var refcon = {
 	 */
 
 	afterScreenSave: function () {
-		// Take reference names from the form and save them (in case something was changed)
-		$( '#refcon-table .refcon-refname' ).each(function() {
-			var name = $(this).val();
-			var templateId = $(this).attr( 'template_id' );
-			var refId = $(this).attr( 'name' );
+		$( '#refcon-table tr[template]' ).each(function() {
+			var refName = $( this ).find( '.refcon-refname' );
+			var name = refName.val();
+			var templateId = refName.attr( 'template_id' );
+			var refId = refName.attr( 'name' );
+			// change reference names to the ones from the form, in case some name was changed
 			refcon.refTemplates[ templateId ].references[ refId ].changeName( name );
+			// save reference location preference from the form into reference object
+			var refPlace = $( this ).find( '.refcon-refplace' );
+			refcon.refTemplates[ templateId ].references[ refId ].inRefTemplate = refPlace.prop('checked') ? true : false;
 		});
+
 		// If user has checked "save sorted" checkbox, save sorting preferences for later
 		if ( $('#refcon-savesorted').prop('checked') ) {
 			if ( $( '.refcon-asc' ).prevAll().length ) {
@@ -993,14 +1059,13 @@ var refcon = {
 	 * @param {object} TextPart object
 	 */
 	processTextPartRefs: function ( textPart ) {
-		var i, reference, refTemplateIx, refTemplate, templateRef,
+		var i, reference, refTemplate, templateRef,
 			createdCitations = [];
 
 		for ( i = 0; i < textPart.references.length; i++ ) {
 			reference = textPart.references[ i ];
 
-			refTemplateIx = textPart.inTemplates[ reference.group ];
-			refTemplate = refcon.refTemplates[ refTemplateIx ];
+			refTemplate = refcon.refTemplates[ textPart.inTemplates[ reference.group ] ];
 
 			// First add named references, because otherwise we could create new records (and names) 
 			// for already existing text part defined references
@@ -1035,7 +1100,8 @@ var refcon = {
 						var newRef = new refcon.Reference({
 							'group': reference.group,
 							'name': newName,
-							'content': reference.content
+							'content': reference.content,
+							'inRefTemplate': false
 						});
 						var citation = new refcon.Citation({
 							'group': reference.group,
@@ -1076,7 +1142,8 @@ var refcon = {
 				var newRef = new refcon.Reference({
 					'group': reference.group,
 					'name': reference.name,
-					'content': reference.content
+					'content': reference.content,
+					'inRefTemplate': false
 				});
 				var citation = new refcon.Citation({
 					'group': reference.group,
@@ -1093,8 +1160,7 @@ var refcon = {
 		for ( i = 0; i < textPart.references.length; i++ ) {
 			reference = textPart.references[ i ];
 
-			refTemplateIx = textPart.inTemplates[ reference.group ];
-			refTemplate = refcon.refTemplates[ refTemplateIx ];
+			refTemplate = refcon.refTemplates[ textPart.inTemplates[ reference.group ] ];
 
 			if ( reference.content.length > 0 && reference.name.length === 0 ) {
 				templateRef = refcon.getRefByIndex( refTemplate, 'values', reference.content );
@@ -1118,7 +1184,8 @@ var refcon = {
 				var newRef = new refcon.Reference({
 					'group': reference.group,
 					'name': newName,
-					'content': reference.content
+					'content': reference.content,
+					'inRefTemplate': false
 				});
 				var citation = new refcon.Citation({
 					'group': reference.group,
@@ -1143,14 +1210,13 @@ var refcon = {
 	 */
 	linkCitations: function ( textPart ) {
 
-		var citation, refTemplateIx, refTemplate, replaceName, templateRef,
+		var citation, refTemplate, replaceName, templateRef,
 			i;
 
 		for ( i = 0; i < textPart.citations.length; i++ ) {
 			citation = textPart.citations[ i ];
 
-			refTemplateIx = textPart.inTemplates[ citation.group ];
-			refTemplate = refcon.refTemplates[ refTemplateIx ];
+			refTemplate = refcon.refTemplates[ textPart.inTemplates[ citation.group ] ];
 
 			if ( citation.name.length > 0 ) {
 
@@ -1181,11 +1247,34 @@ var refcon = {
 	 * @return {void}
 	 */
 	replaceTextPartRefs: function ( textPart ) {
-		var i, citation;
+		var i, citation, refTemplate, templateRef;
 		for ( i = 0; i < textPart.linkedCitations.length; i++ ) {
 			citation = textPart.linkedCitations[ i ];
 			if ( citation.name.length > 0 ) {
-				textPart.string = textPart.string.replace( citation.string, citation.toString() );
+				refTemplate = refcon.refTemplates[ textPart.inTemplates[ citation.group ] ];
+				templateRef = refcon.getRefByIndex( refTemplate, 'keys', citation.name );
+
+				// For the references that are marked as "in reference list template" replace all instances with citation
+				if ( templateRef.inRefTemplate === true ) {
+					textPart.string = textPart.string.replace( citation.string, citation.toString() );
+				// For the references that are marked as "in article text"...
+				} else {
+					// if the reference has just one use, output the reference string w/o name
+					if ( templateRef.citations.length == 1 ) {
+						textPart.string = textPart.string.replace( citation.string, templateRef.toStringText( false ) );
+					// if the reference has more uses...
+					} else {
+						// if the reference has not been output yet, output named reference
+						if ( templateRef.wasPrinted === false ) {
+							textPart.string = textPart.string.replace( citation.string, templateRef.toStringText( true ) );
+							// mark reference as printed
+							templateRef.wasPrinted = true;
+						// if the reference has already been printed, output citation
+						} else {
+							textPart.string = textPart.string.replace( citation.string, citation.toString() );
+						}
+					}
+				}
 			}
 		}
 	},
@@ -1208,7 +1297,7 @@ var refcon = {
 		// turn reference data into reflist parameter value string
 		for ( i = 0; i < refTemplate.references.length; i++ ) {
 			reference = refTemplate.references[ i ];
-			if ( reference ) {
+			if ( typeof reference === 'object' && reference.inRefTemplate === true ) {
 				referencesString += reference.toString() + "\n";
 			}
 		}
@@ -1233,25 +1322,32 @@ var refcon = {
 
 		var templateString = '{{' + refTemplateName;
 
-		// Build the references template string
+		// Build references template string
 		if ( Object.keys( refTemplate.params ).length > 0 ) {
+			// Go through params object
 			for ( var name in refTemplate.params ) {
 				var value = refTemplate.params[ name ];
-
+				// If param name matches with config name for reference list template refs param...
 				if ( refsNames.indexOf( name ) > -1 ) {
-					name = refsName;
-					value = "\n" + referencesString;
-					refsAdded = true;
+					// ... only if there are references in reflist template
+					if ( referencesString.length > 0 ) {
+						// ... add refstring to reflist params
+						templateString += '|' + refsName + '=' + "\n" + referencesString;
+						refsAdded = true;
+					}
+					continue;
 				}
 				templateString += '|' + name + '=' + value;
 			}
 		}
-
-		if ( refsAdded === false ) {
+		// if the reflist template was without any parameters, add parameter and references here
+		if ( refsAdded === false && referencesString.length > 0 ) {
 			templateString += '|' + refsName + "=\n" + referencesString;
 		}
-
-		templateString += "\n}}";
+		if ( referencesString.length > 0 )
+			templateString += "\n}}";
+		else
+			templateString += "}}";
 
 		refTemplate.string = templateString;
 	},
@@ -1532,10 +1628,34 @@ var refcon = {
 		this.citations = [];
 
 		/**
-		 * Convert this reference to wikitext
+		 * Boolean for reference location. True (the default) means in reference list template. False means in article text
+		 */
+		this.inRefTemplate = typeof data.inRefTemplate !== 'undefined' ? data.inRefTemplate : true;
+
+		/**
+		 * Boolean for reference output. False (the default) means the reference has not been printed yet. True means it has been printed.
+		 */
+		this.wasPrinted = false;
+
+		/**
+		 * Convert this reference to wikitext (inside reference list template)
 		 */
 		this.toString = function () {
 			var string = '<ref name="' + this.name + '">' + this.content + '</ref>';
+			return string;
+		};
+
+		/**
+		 * Convert this reference to wikitext (in article text)
+		 */
+		this.toStringText = function ( named ) {
+			var string = '<ref';
+			if ( this.group )
+				string += ' group="' + this.group + '"';
+			if ( named )
+				string += ' name="' + this.name + '"';
+			string += '>' + this.content + '</ref>';
+
 			return string;
 		};
 
@@ -1640,6 +1760,27 @@ var refcon = {
 				this.dupKeyValues[key + '_' + value] = this.keyValues[key + '_' + value];
 			} else {
 				this.keyValues[key + '_' + value] = [ix];
+			}
+		};
+
+		/**
+		 * Recreate reference list template indexes
+		 *
+		 * @return {void}
+		 */
+		this.reIndex = function () {
+			var i, reference;
+			this.keys = {};
+			this.values = {};
+			this.keyValues = {};
+
+			for ( i = 0; i < this.references.length; i++ ) {
+				reference = this.references[ i ];
+				if ( typeof reference === 'object' ) {
+					this.keys[ reference.name ] = [ i ];
+					this.values[ reference.content ] = [ i ];
+					this.keyValues[ reference.name + '_' + reference.content ] = [ i ];
+				}
 			}
 		};
 

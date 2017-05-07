@@ -27,11 +27,11 @@ $.when (
 			if ( contentModel === 'wikitext' ) {
 				// Configure the gadget for this particular wiki
 				mw.config.set({
-					'refcon-gadgetname': 'References Consolidator', //Gadget name
-					'refcon-summary': 'Converted references to list-defined format with [[User:Cumbril/References Consolidator|References Consolidator]]', // Edit summary automatically added by RefCon
+					'refcon-gadgetname': 'Reference Organizer', //Gadget name
+					'refcon-summary': 'Organized references with [[User:Cumbril/Reference Organizer|Reference Organizer]]', // Edit summary automatically added by RefCon
 					'refcon-summaryseparator': ' + ', // Edit summary separator if summary is added to existing summary
-					'refcon-linkname': 'Consolidate refs', //Portlet link name
-					'refcon-linkhover': 'Consolidate references', //Text that is displayed when hovering above the link; link title
+					'refcon-linkname': 'Organize refs', //Portlet link name
+					'refcon-linkhover': 'Organize references', //Text that is displayed when hovering above the link; link title
 					'refcon-reftemplatenames': [ //List template {{reflist}} name and aliases that are used in wiki. Separate with commas. Put the main first.
 						'reflist'
 					],
@@ -59,7 +59,12 @@ $.when (
 					'refcon-buttoncontinue': "Continue",
 					'refcon-referenceuses': "Uses",
 					'refcon-closetitle': "Close window",
-					'refcon-checkboxsortorder': "Save in selected sorting order"
+					'refcon-checkboxsortorder': "save in selected sort order (click on headers to sort)",
+					'refcon-optionsheaderreflocation': "References location:",
+					'refcon-optionsheadersortorder': "Sort order:",
+					'refcon-optionlocation1': "all references are located in reference list template(s)",
+					'refcon-optionlocation2': "all references are located in article text",
+					'refcon-optionlocation3': "all references w/ at least $1 uses are located in reference list template(s)"
 				});
 				mw.loader.load( '/w/index.php?title=User:Cumbril/RefConsolidate.css&action=raw&ctype=text/css', 'text/css' );
 				// cache loaded scripts for faster loading

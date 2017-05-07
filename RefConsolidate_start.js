@@ -46,7 +46,12 @@ $.when (
 					'refcon-buttoncontinue': "Edasi",
 					'refcon-referenceuses': "Kasutusi",
 					'refcon-closetitle': "Sule aken",
-					'refcon-checkboxsortorder': "Salvesta valitud sortimisjärjestuses"
+					'refcon-checkboxsortorder': "salvesta valitud sortimisjärjestuses (sortimiseks klõpsa päisel)",
+					'refcon-optionsheaderreflocation': "Viidete asukoht:",
+					'refcon-optionsheadersortorder': "Sortimisjärjestus:",
+					'refcon-optionlocation1': "kõik viited asuvad viiteloendimallis",
+					'refcon-optionlocation2': "kõik viited asuvad tekstis",
+					'refcon-optionlocation3': "kõik vähemalt $1 kasutusega viited asuvad viiteloendimallis"
 				});
 				
 				mw.loader.load('https://localhost/RefConsolidate.css', 'text/css');

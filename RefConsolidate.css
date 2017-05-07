@@ -121,3 +121,29 @@
 .refcon-templategroup {
 	font-weight: bold;
 }
+
+#refcon-table-options {
+	border-collapse: collapse;
+	border-spacing: 0;
+	border: none;
+}
+
+#refcon-table-options td {
+	font-family: Verdana;
+	font-size: 12px;
+	padding: 2px 5px;
+	border-style: solid;
+	border-width: 0px;
+}
+
+.refcon-option-point {
+	margin-left: 10px;
+}
+
+.refcon-option-header {
+	font-weight: bold;
+}
+
+#refcon-table-options-uses {
+	width: 20px;
+}
