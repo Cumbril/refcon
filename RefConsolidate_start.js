@@ -47,8 +47,9 @@ $.when (
 					'refcon-referenceuses': "Kasutusi",
 					'refcon-closetitle': "Sule aken",
 					'refcon-checkboxsortorder': "salvesta valitud sortimisjärjestuses (sortimiseks klõpsa päisel)",
+					'refcon-checkboxkeepnames': "hoia teksti salvestamisel alles ühekordse kasutusega viidete nimed",
 					'refcon-optionsheaderreflocation': "Viidete asukoht:",
-					'refcon-optionsheadersortorder': "Sortimisjärjestus:",
+					'refcon-optionsheaderother': "Muud valikud:",
 					'refcon-optionlocation1': "kõik viited asuvad viiteloendimallis",
 					'refcon-optionlocation2': "kõik viited asuvad tekstis",
 					'refcon-optionlocation3': "kõik vähemalt $1 kasutusega viited asuvad viiteloendimallis"

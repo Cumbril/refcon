@@ -57,7 +57,7 @@ var refcon = {
 	 * @type {object}
 	 */
 
-	sort: {},
+	userOptions: {},
 
 	/**
 	 * Convenience method to get a RefCon option
@@ -322,9 +322,9 @@ var refcon = {
 			}
 		}
 		table.append('<tr><td colspan="5"><table id="refcon-table-options">\
-					<tr><td><span class="refcon-option-header">' + refcon.getMessage( 'optionsheaderreflocation' ) + '</span></td><td width="20"></td><td><span class="refcon-option-header">' + refcon.getMessage( 'optionsheadersortorder' ) + '</span></td></tr>\
+					<tr><td><span class="refcon-option-header">' + refcon.getMessage( 'optionsheaderreflocation' ) + '</span></td><td width="20"></td><td><span class="refcon-option-header">' + refcon.getMessage( 'optionsheaderother' ) + '</span></td></tr>\
 					<tr><td><span class="refcon-option-point"><input class="refcon-refplacement" type="radio" name="reference-place" value="template"> ' + refcon.getMessage( 'optionlocation1' ) + '</span></td><td width="20"></td><td><span class="refcon-option-point"><input type="checkbox" id="refcon-savesorted" name="sort" value="yes">'+ refcon.getMessage( 'checkboxsortorder' ) +'</span></td></tr>\
-					<tr><td><span class="refcon-option-point"><input class="refcon-refplacement" type="radio" name="reference-place" value="text"> ' + refcon.getMessage( 'optionlocation2' ) + '</span></td><td width="20"></td><td></td></tr>\
+					<tr><td><span class="refcon-option-point"><input class="refcon-refplacement" type="radio" name="reference-place" value="text"> ' + refcon.getMessage( 'optionlocation2' ) + '</span></td><td width="20"></td><td><span class="refcon-option-point"><input type="checkbox" id="refcon-keepnames" name="names" value="yes">'+ refcon.getMessage( 'checkboxkeepnames' ) +'</span></td></tr>\
 					<tr><td><span class="refcon-option-point"><input class="refcon-refplacement" type="radio" name="reference-place" value="usage"> ' + refcon.getMessage( 'optionlocation3', [ '<input id="refcon-table-options-uses" type="text" name="min_uses" size="2" value="2">' ]) + '</span></td><td width="20"></td><td></td></tr>\
 					</table></td></tr>');
 		table.append('<tr id="refcon-buttons"><td colspan="5" align="center"><button type="button" id="refcon-abort-button" class="refcon-abort">'
@@ -501,16 +501,24 @@ var refcon = {
 			refcon.refTemplates[ templateId ].references[ refId ].inRefTemplate = refPlace.prop('checked') ? true : false;
 		});
 
-		// If user has checked "save sorted" checkbox, save sorting preferences for later
+		// If user has checked "save sorted" checkbox, save sorting preferences
 		if ( $('#refcon-savesorted').prop('checked') ) {
+			var sortOptions = {};
 			if ( $( '.refcon-asc' ).prevAll().length ) {
-				refcon.sort['column'] = $( '.refcon-asc' ).prevAll().length;
-				refcon.sort['order'] = 'asc';
+				sortOptions['column'] = $( '.refcon-asc' ).prevAll().length;
+				sortOptions['order'] = 'asc';
 			} else if ( $( '.refcon-desc' ).prevAll().length ) {
-				refcon.sort['column'] = $( '.refcon-desc' ).prevAll().length;
-				refcon.sort['order'] = 'desc';
+				sortOptions['column'] = $( '.refcon-desc' ).prevAll().length;
+				sortOptions['order'] = 'desc';
 			}
+			refcon.userOptions['sort'] = sortOptions;
 		}
+		// If user has checked "keep names" checkbox, save name keeping preferences
+		if ( $('#refcon-keepnames').prop('checked') )
+			refcon.userOptions['keepnames'] = true;
+		else
+			refcon.userOptions['keepnames'] = false;
+
 		refcon.commit();
 	},
 
@@ -1259,9 +1267,9 @@ var refcon = {
 					textPart.string = textPart.string.replace( citation.string, citation.toString() );
 				// For the references that are marked as "in article text"...
 				} else {
-					// if the reference has just one use, output the reference string w/o name
+					// if the reference has just one use, output the reference string w/o name (unless user options "keep names" was selected)
 					if ( templateRef.citations.length == 1 ) {
-						textPart.string = textPart.string.replace( citation.string, templateRef.toStringText( false ) );
+						textPart.string = textPart.string.replace( citation.string, templateRef.toStringText( refcon.userOptions.keepnames ) );
 					// if the reference has more uses...
 					} else {
 						// if the reference has not been output yet, output named reference
@@ -1290,7 +1298,7 @@ var refcon = {
 		var i, reference, referencesString = '', refsAdded = false;
 
 		// sort references if user has checked the checkbox
-		if ( Object.keys( refcon.sort ).length > 0 ) {
+		if ( typeof refcon.userOptions.sort === 'object' && Object.keys( refcon.userOptions.sort ).length > 0 ) {
 			refcon.sortReferences ( refTemplate );
 		}
 
@@ -1361,19 +1369,19 @@ var refcon = {
 	 */
 	sortReferences: function ( refTemplate ) {
 
-		if ( refcon.sort.column === 1 ) {
-			refTemplate.references = refcon.sort.order === 'desc' ? refTemplate.references.reverse() : refTemplate.references;
+		if ( refcon.userOptions.sort.column === 1 ) {
+			refTemplate.references = refcon.userOptions.sort.order === 'desc' ? refTemplate.references.reverse() : refTemplate.references;
 		} else {
 			refTemplate.references.sort( function( a,b ) {
 				// order by reference name
-				if ( refcon.sort.column === 2 ) {
-					return refcon.sort.order === 'asc' ? a.name.localeCompare( b.name, mw.config.get( 'wgContentLanguage' ) ) : b.name.localeCompare( a.name, mw.config.get( 'wgContentLanguage' ) );
+				if ( refcon.userOptions.sort.column === 2 ) {
+					return refcon.userOptions.sort.order === 'asc' ? a.name.localeCompare( b.name, mw.config.get( 'wgContentLanguage' ) ) : b.name.localeCompare( a.name, mw.config.get( 'wgContentLanguage' ) );
 				// order by reference content
-				} else if ( refcon.sort.column === 3 ) {
-					return refcon.sort.order === 'asc' ? a.content.localeCompare( b.content, mw.config.get( 'wgContentLanguage' ) ) : b.content.localeCompare( a.content, mw.config.get( 'wgContentLanguage' ) );
+				} else if ( refcon.userOptions.sort.column === 3 ) {
+					return refcon.userOptions.sort.order === 'asc' ? a.content.localeCompare( b.content, mw.config.get( 'wgContentLanguage' ) ) : b.content.localeCompare( a.content, mw.config.get( 'wgContentLanguage' ) );
 				// order by citations count
-				} else if ( refcon.sort.column === 4 ) {
-					return refcon.sort.order === 'asc' ? a.citations.length - b.citations.length : b.citations.length - a.citations.length;
+				} else if ( refcon.userOptions.sort.column === 4 ) {
+					return refcon.userOptions.sort.order === 'asc' ? a.citations.length - b.citations.length : b.citations.length - a.citations.length;
 				}
 			});
 		}

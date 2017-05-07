@@ -60,8 +60,9 @@ $.when (
 					'refcon-referenceuses': "Uses",
 					'refcon-closetitle': "Close window",
 					'refcon-checkboxsortorder': "save in selected sort order (click on headers to sort)",
+					'refcon-checkboxkeepnames': "keep reference names when saving references into article body",
 					'refcon-optionsheaderreflocation': "References location:",
-					'refcon-optionsheadersortorder': "Sort order:",
+					'refcon-optionsheaderother': "Other choices:",
 					'refcon-optionlocation1': "all references are located in reference list template(s)",
 					'refcon-optionlocation2': "all references are located in article text",
 					'refcon-optionlocation3': "all references w/ at least $1 uses are located in reference list template(s)"
