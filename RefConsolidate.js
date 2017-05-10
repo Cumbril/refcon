@@ -1,5 +1,5 @@
 ﻿/**
- * RefCon (References Consolidator) is a Wikipedia gadget for organizing references in articles. With RefCon,
+ * Reference Organizer is a Wikipedia gadget for organizing references in articles. With the gadget,
  * you can easily move all references into reference list template, or vice versa. You can select which references
  * to move based on citation count, or select references individually. The gadget detects all article's references 
  * and lists them in a table, where you can see their current location (in reference list template or in article text),
@@ -654,11 +654,10 @@ var refcon = {
 								name = part[ j ].name[0]['_attr']['index']['_value'];
 							}
 							name = typeof name === 'string' ? name.trim() : name;
-							//@todo: if there is some text in refs parameter between references, ['_text'] is defined and value is set to
-							//this instead ['ext']
-							if ( typeof part[ j ].value[0]['_text'] !== 'undefined' ) {
-								value = part[ j ].value[0]['_text'];
-							} else if ( typeof part[ j ].value[0]['ext'] !== 'undefined' ) {
+							// By checking 'ext' first, '_text' second,
+							// if the parameter value is a list of references that contains some text between the reference tags, the text is lost.
+							// But at least we get the references and not the text instead
+							if ( typeof part[ j ].value[0]['ext'] !== 'undefined' ) {
 								ext = part[ j ].value[0]['ext'];
 								if ( Array.isArray( ext ) ) {
 									var k, attr, inner;
@@ -675,6 +674,8 @@ var refcon = {
 										}
 									}
 								}
+							} else if ( typeof part[ j ].value[0]['_text'] !== 'undefined' ) {
+								value = part[ j ].value[0]['_text'];
 							}
 							value = typeof value === 'string' ? value.trim() : value;
 							paramPairs[ name ] = value;
