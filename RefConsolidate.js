@@ -1345,8 +1345,8 @@ var refcon = {
 						refsAdded = true;
 					}
 					continue;
-				} else if ( typeof value !== 'string' ) {
-					// If value is anything other than string, skip it. 
+				} else if ( typeof value !== 'string' && typeof value !== 'number' ) {
+					// If value is anything other than string or number, skip it. 
 					// Value is array if, for example, references are incorrectly defined inside unnamed parameter.
 					continue;
 				}
